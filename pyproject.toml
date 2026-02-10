@@ -1,0 +1,31 @@
+[project]
+name = "allegro-cli"
+version = "0.1.0"
+description = "CLI for browsing Allegro offers, managing cart, and tracking packages — human-readable and LLM-agent friendly"
+requires-python = ">=3.10"
+authors = [
+    {name = "Piotr Konowrocki"},
+]
+dependencies = [
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "curl_cffi>=0.7",
+]
+readme = "README.md"
+
+[project.urls]
+Repository = "https://github.com/pkonowrocki/allegro-cli"
+
+[project.scripts]
+allegro = "allegro_cli.main:cli"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
