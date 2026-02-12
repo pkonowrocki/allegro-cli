@@ -239,6 +239,52 @@ def parse_search_results(html: str) -> list[Offer]:
     return offers
 
 
+def _extract_parameters_from_serialized_json(soup: BeautifulSoup) -> dict[str, str]:
+    """Extract parameters from <script data-serialize-box-id> JSON blocks.
+
+    Allegro embeds offer parameters in JSON inside <script> tags that contain
+    a ``groups`` list with ``singleValueParams`` and ``multiValueParams``.
+    """
+    result: dict[str, str] = {}
+    for script in soup.find_all("script", attrs={"data-serialize-box-id": True}):
+        text = script.string
+        if not text:
+            continue
+        try:
+            data = json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        groups = data.get("groups")
+        if not groups or not isinstance(groups, list):
+            continue
+        for group in groups:
+            for param in group.get("singleValueParams", []):
+                name = param.get("name", "")
+                value = param.get("value", {})
+                if isinstance(value, dict):
+                    value = value.get("name", "")
+                if name and value:
+                    result.setdefault(name, str(value))
+            for param in group.get("multiValueParams", []):
+                name = param.get("name", "")
+                values = param.get("values", [])
+                if isinstance(values, list):
+                    parts = []
+                    for v in values:
+                        if isinstance(v, dict):
+                            parts.append(v.get("name", ""))
+                        else:
+                            parts.append(str(v))
+                    value = ", ".join(p for p in parts if p)
+                else:
+                    value = str(values)
+                if name and value:
+                    result.setdefault(name, value)
+    return result
+
+
 def _extract_parameters_from_json(html: str) -> dict[str, str]:
     """Extract product parameters from __NEXT_DATA__ JSON."""
     match = re.search(
@@ -276,42 +322,172 @@ def _extract_parameters_from_json(html: str) -> dict[str, str]:
     return result
 
 
+def _extract_param_value(cell: Tag) -> str:
+    """Extract a clean parameter value from a table cell.
+
+    Allegro value cells contain ``<a>`` with the value and optionally a sibling
+    ``<div>`` with a long description (e.g. for "Stan").  We want just the
+    concise value, not the description.
+    """
+    # Check for <a> or <span> inside a wrapper <div>
+    wrapper = cell.find("div")
+    target = wrapper if wrapper else cell
+
+    # Prefer the first <a> link text (the concise value)
+    link = target.find("a")
+    if link:
+        return link.get_text(strip=True)
+
+    # If no link, take the first direct text node or first child text,
+    # skipping nested description divs.
+    for child in target.children:
+        if isinstance(child, str):
+            text = child.strip()
+            if text:
+                return text
+        elif hasattr(child, "name") and child.name not in ("div",):
+            text = child.get_text(strip=True)
+            if text:
+                return text
+
+    # Final fallback: full text
+    return cell.get_text(strip=True)
+
+
+def _extract_params_from_table(table: Tag) -> dict[str, str]:
+    """Extract key-value parameters from a 2-column table."""
+    result: dict[str, str] = {}
+    for row in table.find_all("tr"):
+        cells = row.find_all("td")
+        if len(cells) >= 2:
+            key = cells[0].get_text(strip=True)
+            val = _extract_param_value(cells[1])
+            if key and val:
+                result.setdefault(key, val)
+    return result
+
+
 def _extract_parameters_from_html(soup: BeautifulSoup) -> dict[str, str]:
-    """Fallback: extract parameters from HTML tables or definition lists."""
-    # Find heading containing "parametr" or "specyfik" (case-insensitive)
+    """Fallback: extract parameters from HTML tables or definition lists.
+
+    Allegro renders parameters in tables that follow headings containing
+    "Parametry" or "Specyfikacja".  The page may have multiple such tables
+    (a compact sidebar one and a full expanded one).  We pick the table with
+    the most parameters.
+    """
+    best: dict[str, str] = {}
+
+    # Scan ALL parameter-related headings and their subsequent tables
+    for heading in soup.find_all(
+        re.compile(r"^h[1-6]$"),
+        string=re.compile(r"parametr|specyfik", re.IGNORECASE),
+    ):
+        table = heading.find_next("table")
+        if table:
+            params = _extract_params_from_table(table)
+            if len(params) > len(best):
+                best = params
+
+    if best:
+        return best
+
+    # Fallback: look for a <dl> after any parameter heading
     heading = soup.find(
         re.compile(r"^h[1-6]$"),
         string=re.compile(r"parametr|specyfik", re.IGNORECASE),
     )
-    if not heading:
-        return {}
-
-    result: dict[str, str] = {}
-
-    # Look for a <table> after the heading
-    table = heading.find_next("table")
-    if table:
-        for row in table.find_all("tr"):
-            cells = row.find_all(["td", "th"])
-            if len(cells) >= 2:
-                key = cells[0].get_text(strip=True)
-                val = cells[1].get_text(strip=True)
+    if heading:
+        dl = heading.find_next("dl")
+        if dl:
+            result: dict[str, str] = {}
+            dts = dl.find_all("dt")
+            dds = dl.find_all("dd")
+            for dt, dd in zip(dts, dds):
+                key = dt.get_text(strip=True)
+                val = dd.get_text(strip=True)
                 if key:
                     result[key] = val
-        if result:
             return result
 
-    # Look for a <dl> after the heading
-    dl = heading.find_next("dl")
-    if dl:
-        dts = dl.find_all("dt")
-        dds = dl.find_all("dd")
-        for dt, dd in zip(dts, dds):
-            key = dt.get_text(strip=True)
-            val = dd.get_text(strip=True)
-            if key:
-                result[key] = val
+    return {}
 
+
+def _walk_for_params(data, result: dict[str, str]) -> None:
+    """Recursively walk a JSON structure looking for parameter groups."""
+    if isinstance(data, dict):
+        groups = data.get("groups")
+        if isinstance(groups, list):
+            for group in groups:
+                for param in group.get("singleValueParams", []):
+                    name = param.get("name", "")
+                    value = param.get("value", {})
+                    if isinstance(value, dict):
+                        value = value.get("name", "")
+                    if name and value:
+                        result.setdefault(name, str(value))
+                for param in group.get("multiValueParams", []):
+                    name = param.get("name", "")
+                    values = param.get("values", [])
+                    if isinstance(values, list):
+                        parts = []
+                        for v in values:
+                            if isinstance(v, dict):
+                                parts.append(v.get("name", ""))
+                            else:
+                                parts.append(str(v))
+                        value = ", ".join(p for p in parts if p)
+                    else:
+                        value = str(values)
+                    if name and value:
+                        result.setdefault(name, value)
+        for v in data.values():
+            _walk_for_params(v, result)
+    elif isinstance(data, list):
+        for item in data:
+            _walk_for_params(item, result)
+
+
+def extract_lazy_contexts(html: str) -> list[dict]:
+    """Extract lazy-load context entries from the initial HTML.
+
+    Allegro embeds ``<script data-serialize-box-id>`` tags whose JSON payload
+    may contain ``contextUrlParamName: "lazyContext"`` with an encoded value
+    used to fetch additional page sections via the opbox API.
+    """
+    contexts: list[dict] = []
+    for m in re.finditer(
+        r'<script[^>]+data-serialize-box-id="([^"]*)"[^>]*>(.*?)</script>',
+        html,
+        re.DOTALL,
+    ):
+        box_id = m.group(1)
+        try:
+            data = json.loads(m.group(2))
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        if (
+            data.get("contextUrlParamName") == "lazyContext"
+            and data.get("contextUrlParamValue")
+        ):
+            contexts.append({
+                "box_id": box_id,
+                "value": data["contextUrlParamValue"],
+                "cardinal": data.get("cardinal", 0),
+                "corellationId": data.get("corellationId", ""),
+            })
+    # Sort: "tab content" first (where params live), then by cardinal
+    contexts.sort(
+        key=lambda c: (c["corellationId"] != "tab content", c["cardinal"]),
+    )
+    return contexts
+
+
+def parse_opbox_parameters(data) -> dict[str, str]:
+    """Extract parameters from an opbox subtree JSON response."""
+    result: dict[str, str] = {}
+    _walk_for_params(data, result)
     return result
 
 
@@ -367,8 +543,10 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
         if seller_match2:
             seller_id = seller_match2.group(1)
 
-    # Parameters — try JSON first, HTML fallback
-    parameters = _extract_parameters_from_json(html)
+    # Parameters — try serialized JSON (most reliable), then __NEXT_DATA__, then HTML
+    parameters = _extract_parameters_from_serialized_json(soup)
+    if not parameters:
+        parameters = _extract_parameters_from_json(html)
     if not parameters:
         parameters = _extract_parameters_from_html(soup)
 

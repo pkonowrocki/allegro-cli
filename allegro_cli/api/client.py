@@ -100,11 +100,58 @@ class AllegroClient:
                 "Run: allegro login"
             )
 
-        from allegro_cli.scraper import parse_offer_page
+        from allegro_cli.scraper import (
+            extract_lazy_contexts,
+            parse_offer_page,
+        )
 
         url = f"https://allegro.pl/oferta/-{offer_id}"
         html = self._fetch_page(url)
-        return parse_offer_page(html, offer_id=offer_id)
+        offer = parse_offer_page(html, offer_id=offer_id)
+
+        # If we only got a few params, try lazy loading the rest
+        if len(offer.parameters) < 15:
+            contexts = extract_lazy_contexts(html)
+            if contexts:
+                lazy_params = self._fetch_lazy_parameters(url, contexts)
+                for k, v in lazy_params.items():
+                    offer.parameters.setdefault(k, v)
+
+        return offer
+
+    def _fetch_lazy_parameters(
+        self, offer_url: str, contexts: list[dict],
+    ) -> dict[str, str]:
+        """Fetch lazy-loaded parameter groups via the opbox API."""
+        from allegro_cli.scraper import parse_opbox_parameters
+
+        result: dict[str, str] = {}
+        max_requests = 3
+        for ctx in contexts[:max_requests]:
+            lazy_url = f"{offer_url}?lazyContext={ctx['value']}"
+            self._log(f"GET {lazy_url} (lazy params)")
+            try:
+                resp = self._web.get(
+                    lazy_url,
+                    headers={
+                        "Accept": "application/vnd.opbox-web.subtree+json",
+                    },
+                    timeout=15,
+                )
+            except Exception:
+                continue
+            if resp.status_code != 200:
+                continue
+            try:
+                data = resp.json()
+            except (ValueError, Exception):
+                continue
+            params = parse_opbox_parameters(data)
+            for k, v in params.items():
+                result.setdefault(k, v)
+            if len(result) > 15:
+                break
+        return result
 
     def _fetch_page(self, url: str) -> str:
         # Try direct curl_cffi first

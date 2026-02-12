@@ -239,6 +239,102 @@ def test_e2e_search_empty_text(capsys):
     assert "(no results)" in out
 
 
+def test_e2e_offer_lazy_parameters(capsys):
+    """When initial HTML has few params + lazy contexts, lazy-load fills the gaps."""
+    initial_html = """\
+<html><head>
+  <meta property="product:price:amount" content="5999.00" />
+  <meta property="og:image" content="https://a.allegroimg.com/original/lazy-offer.jpg" />
+  <link rel="canonical" href="https://allegro.pl/oferta/laptop-test-88888888" />
+</head><body>
+  <h1>Laptop z lazy-loaded params</h1>
+  <script>{"sellerId":"11111"}</script>
+  <script type="application/json" data-serialize-box-id="box-initial">
+  {
+    "groups": [{
+      "label": "Podstawowe",
+      "singleValueParams": [
+        {"name": "Stan", "value": {"name": "Nowy"}},
+        {"name": "Marka", "value": {"name": "Dell"}}
+      ],
+      "multiValueParams": []
+    }]
+  }
+  </script>
+  <script type="application/json" data-serialize-box-id="box-lazy-tab">
+  {
+    "contextUrlParamName": "lazyContext",
+    "contextUrlParamValue": "AR-TAB-CONTENT-123",
+    "cardinal": 1,
+    "corellationId": "tab content"
+  }
+  </script>
+</body></html>
+"""
+    lazy_response_json = {
+        "slots": {
+            "content": [{
+                "groups": [
+                    {
+                        "label": "Procesor",
+                        "singleValueParams": [
+                            {"name": "Procesor", "value": {"name": "Intel Core i9-13900H"}},
+                            {"name": "Liczba rdzeni", "value": {"name": "14"}},
+                        ],
+                        "multiValueParams": [],
+                    },
+                    {
+                        "label": "Pamięć",
+                        "singleValueParams": [
+                            {"name": "RAM", "value": {"name": "32 GB"}},
+                            {"name": "Dysk", "value": {"name": "1 TB SSD"}},
+                        ],
+                        "multiValueParams": [
+                            {"name": "Komunikacja", "values": [{"name": "Wi-Fi 6E"}, {"name": "Bluetooth 5.3"}]},
+                        ],
+                    },
+                ]
+            }]
+        }
+    }
+
+    lazy_resp_mock = MagicMock()
+    lazy_resp_mock.status_code = 200
+    lazy_resp_mock.json.return_value = lazy_response_json
+
+    def fake_lazy_fetch(self, offer_url, contexts):
+        from allegro_cli.scraper import parse_opbox_parameters
+
+        result = {}
+        for ctx in contexts:
+            params = parse_opbox_parameters(lazy_response_json)
+            result.update(params)
+        return result
+
+    with (
+        patch("allegro_cli.main.load_config", return_value=_mock_config()),
+        patch("allegro_cli.main.ensure_dirs"),
+        patch("sys.argv", ["allegro", "offer", "88888888", "--format", "json"]),
+        patch("allegro_cli.api.client.AllegroClient._fetch_page", return_value=initial_html),
+        patch("allegro_cli.api.client.AllegroClient._fetch_lazy_parameters", fake_lazy_fetch),
+    ):
+        result = main()
+
+    assert result == 0
+    data = json.loads(capsys.readouterr().out)
+    params = data["parameters"]
+    # Initial params
+    assert params["Stan"] == "Nowy"
+    assert params["Marka"] == "Dell"
+    # Lazy-loaded params
+    assert params["Procesor"] == "Intel Core i9-13900H"
+    assert params["Liczba rdzeni"] == "14"
+    assert params["RAM"] == "32 GB"
+    assert params["Dysk"] == "1 TB SSD"
+    assert params["Komunikacja"] == "Wi-Fi 6E, Bluetooth 5.3"
+    assert len(params) == 7
+
+
 def test_e2e_missing_cookies(capsys):
     no_cookies_config = MagicMock(
         cookies=None,

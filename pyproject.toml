@@ -21,11 +21,21 @@ Repository = "https://github.com/pkonowrocki/allegro-cli"
 allegro = "allegro_cli.main:cli"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "commitizen>=4.1", "build>=1.0"]
 
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = [
+    "pyproject.toml:version",
+    "allegro_cli/__init__.py:__version__",
+]
+tag_format = "v$version"
+update_changelog_on_bump = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

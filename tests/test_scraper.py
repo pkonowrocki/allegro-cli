@@ -1,4 +1,10 @@
-from allegro_cli.scraper import parse_next_page_url, parse_offer_page, parse_search_results
+from allegro_cli.scraper import (
+    extract_lazy_contexts,
+    parse_next_page_url,
+    parse_offer_page,
+    parse_opbox_parameters,
+    parse_search_results,
+)
 
 SAMPLE_HTML = """\
 <html>
@@ -232,6 +238,129 @@ def test_parse_offer_page_no_parameters():
     assert offer.parameters == {}
 
 
+def test_parse_offer_page_extracts_parameters_serialized_json():
+    """Parameters from <script data-serialize-box-id> JSON (real Allegro format)."""
+    html = """\
+<html><head></head><body>
+  <h1>Apple Mac Studio</h1>
+  <meta property="product:price:amount" content="4399.00" />
+  <script type="application/json" data-serialize-box-id="abc123">
+  {
+    "groups": [
+      {
+        "label": "Dane podstawowe",
+        "singleValueParams": [
+          {"name": "Stan", "value": {"name": "Nowy", "description": "brand new item"}},
+          {"name": "Marka", "value": {"name": "Apple"}}
+        ],
+        "multiValueParams": [
+          {"name": "Komunikacja", "values": [{"name": "Wi-Fi"}, {"name": "Bluetooth"}]}
+        ]
+      },
+      {
+        "label": "Procesor",
+        "singleValueParams": [
+          {"name": "Model procesora", "value": {"name": "Apple M1 Max"}},
+          {"name": "Liczba rdzeni", "value": {"name": "10"}}
+        ],
+        "multiValueParams": []
+      }
+    ]
+  }
+  </script>
+</body></html>
+"""
+    offer = parse_offer_page(html, offer_id="44444444")
+    assert offer.parameters["Stan"] == "Nowy"
+    assert offer.parameters["Marka"] == "Apple"
+    assert offer.parameters["Komunikacja"] == "Wi-Fi, Bluetooth"
+    assert offer.parameters["Model procesora"] == "Apple M1 Max"
+    assert offer.parameters["Liczba rdzeni"] == "10"
+    assert len(offer.parameters) == 5
+
+
+def test_parse_offer_page_serialized_json_takes_priority():
+    """Serialized JSON should be preferred over __NEXT_DATA__ and HTML table."""
+    html = """\
+<html><head></head><body>
+  <h1>Test Product</h1>
+  <meta property="product:price:amount" content="99.00" />
+  <script type="application/json" data-serialize-box-id="box1">
+  {
+    "groups": [{
+      "label": "Info",
+      "singleValueParams": [{"name": "Color", "value": {"name": "Red"}}],
+      "multiValueParams": []
+    }]
+  }
+  </script>
+  <script id="__NEXT_DATA__" type="application/json">
+  {"props": {"pageProps": {"parameters": [{"name": "Color", "value": "Blue"}]}}}
+  </script>
+  <h3>Parametry</h3>
+  <table><tr><td>Color</td><td>Green</td></tr></table>
+</body></html>
+"""
+    offer = parse_offer_page(html, offer_id="55555555")
+    assert offer.parameters["Color"] == "Red"
+
+
+def test_parse_offer_page_html_table_skips_description():
+    """Real Allegro HTML: value cells contain <a> for the value and a sibling
+    <div> with a long description.  We should only extract the <a> text."""
+    html = """\
+<html><head></head><body>
+  <h1>Mac Mini</h1>
+  <meta property="product:price:amount" content="4399.00" />
+  <h3>Parametry</h3>
+  <table>
+    <tr><th>Dane podstawowe</th></tr>
+    <tr>
+      <td>Stan</td>
+      <td>
+        <div>
+          <a href="/kategoria?stan=nowe">Nowy</a>
+          <div class="mpof_vs">Nowyoznacza Towar calkowicie nowy, kompletny...</div>
+        </div>
+      </td>
+    </tr>
+    <tr><td>Marka</td><td><div><a href="/kategoria?marka=Apple">Apple</a></div></td></tr>
+    <tr><td>Procesor</td><td><div>Intel Core i5</div></td></tr>
+    <tr><td>RAM</td><td>8 GB</td></tr>
+  </table>
+</body></html>
+"""
+    offer = parse_offer_page(html, offer_id="66666666")
+    assert offer.parameters["Stan"] == "Nowy"
+    assert offer.parameters["Marka"] == "Apple"
+    assert offer.parameters["Procesor"] == "Intel Core i5"
+    assert offer.parameters["RAM"] == "8 GB"
+
+
+def test_parse_offer_page_html_picks_largest_table():
+    """When multiple parameter tables exist, pick the one with the most rows."""
+    html = """\
+<html><head></head><body>
+  <h1>Test Product</h1>
+  <meta property="product:price:amount" content="99.00" />
+  <h2>Parametry</h2>
+  <table>
+    <tr><td>Color</td><td>Red</td></tr>
+  </table>
+  <h3>Parametry</h3>
+  <table>
+    <tr><td>Color</td><td>Red</td></tr>
+    <tr><td>Size</td><td>XL</td></tr>
+    <tr><td>Material</td><td>Cotton</td></tr>
+  </table>
+</body></html>
+"""
+    offer = parse_offer_page(html, offer_id="77777777")
+    assert len(offer.parameters) == 3
+    assert offer.parameters["Size"] == "XL"
+    assert offer.parameters["Material"] == "Cotton"
+
+
 def test_parse_next_page_url():
     url = parse_next_page_url(SAMPLE_HTML)
     assert url == "https://allegro.pl/listing?string=laptop&p=2"
@@ -240,3 +369,105 @@ def test_parse_next_page_url():
 def test_parse_next_page_url_none():
     url = parse_next_page_url(SAMPLE_HTML_NO_NEXT)
     assert url is None
+
+
+# --- extract_lazy_contexts tests ---
+
+
+def test_extract_lazy_contexts():
+    html = """\
+<html><body>
+  <script type="application/json" data-serialize-box-id="box-params">
+  {
+    "contextUrlParamName": "lazyContext",
+    "contextUrlParamValue": "AR-LCAAA-encoded-value",
+    "cardinal": 1,
+    "corellationId": "tab content"
+  }
+  </script>
+  <script type="application/json" data-serialize-box-id="box-top">
+  {
+    "contextUrlParamName": "lazyContext",
+    "contextUrlParamValue": "AR-TOP-encoded-value",
+    "cardinal": 0,
+    "corellationId": "top"
+  }
+  </script>
+  <script type="application/json" data-serialize-box-id="box-other">
+  {
+    "groups": [{"singleValueParams": []}]
+  }
+  </script>
+</body></html>
+"""
+    contexts = extract_lazy_contexts(html)
+    assert len(contexts) == 2
+    # "tab content" should come first
+    assert contexts[0]["box_id"] == "box-params"
+    assert contexts[0]["value"] == "AR-LCAAA-encoded-value"
+    assert contexts[0]["corellationId"] == "tab content"
+    assert contexts[0]["cardinal"] == 1
+    # "top" second
+    assert contexts[1]["box_id"] == "box-top"
+    assert contexts[1]["corellationId"] == "top"
+
+
+def test_extract_lazy_contexts_empty():
+    html = "<html><body><script data-serialize-box-id=\"x\">{}</script></body></html>"
+    assert extract_lazy_contexts(html) == []
+
+
+# --- parse_opbox_parameters tests ---
+
+
+def test_parse_opbox_parameters():
+    data = {
+        "groups": [
+            {
+                "label": "Procesor",
+                "singleValueParams": [
+                    {"name": "Model procesora", "value": {"name": "Intel i7"}},
+                ],
+                "multiValueParams": [
+                    {"name": "Cechy", "values": [{"name": "SSD"}, {"name": "IPS"}]},
+                ],
+            }
+        ]
+    }
+    params = parse_opbox_parameters(data)
+    assert params["Model procesora"] == "Intel i7"
+    assert params["Cechy"] == "SSD, IPS"
+
+
+def test_parse_opbox_parameters_nested():
+    """Parameters buried deep in the opbox response tree."""
+    data = {
+        "slots": {
+            "content": [
+                {
+                    "children": [
+                        {
+                            "groups": [
+                                {
+                                    "label": "RAM",
+                                    "singleValueParams": [
+                                        {"name": "RAM", "value": {"name": "16 GB"}},
+                                        {"name": "Typ RAM", "value": {"name": "DDR5"}},
+                                    ],
+                                    "multiValueParams": [],
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+    params = parse_opbox_parameters(data)
+    assert params["RAM"] == "16 GB"
+    assert params["Typ RAM"] == "DDR5"
+
+
+def test_parse_opbox_parameters_empty():
+    assert parse_opbox_parameters({}) == {}
+    assert parse_opbox_parameters({"foo": "bar"}) == {}

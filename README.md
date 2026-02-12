@@ -8,8 +8,24 @@ All output is available as aligned text tables, JSON, or TSV — pick what suits
 
 ## Install
 
+**From GitHub Releases** (recommended):
+
 ```bash
-pip install -e .
+pip install https://github.com/pkonowrocki/allegro-cli/releases/latest/download/allegro_cli-0.1.0-py3-none-any.whl
+```
+
+**From source (latest)**:
+
+```bash
+pip install git+https://github.com/pkonowrocki/allegro-cli.git
+```
+
+**For development**:
+
+```bash
+git clone https://github.com/pkonowrocki/allegro-cli.git
+cd allegro-cli
+pip install -e ".[dev]"
 ```
 
 ## Setup
