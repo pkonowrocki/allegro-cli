@@ -1,0 +1,35 @@
+name: Bump version
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    # skip bumps created by this workflow to avoid infinite loops
+    if: "!startsWith(github.event.head_commit.message, 'bump:')"
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - run: pip install commitizen
+
+      - name: Bump version
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          cz bump --yes --changelog || echo "No commits to bump"
+
+      - name: Push changes and tags
+        run: git push --follow-tags
