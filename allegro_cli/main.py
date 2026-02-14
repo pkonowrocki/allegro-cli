@@ -86,13 +86,13 @@ def create_parser() -> argparse.ArgumentParser:
 
     sp_add = cart_sub.add_parser("add", parents=[common], help="Add item to cart (increase quantity)")
     sp_add.add_argument("offer_id", help="Offer ID")
-    sp_add.add_argument("seller_id", help="Seller ID")
+    sp_add.add_argument("seller_id", nargs="?", default=None, help="Seller ID (optional, fetched if missing)")
     sp_add.add_argument("--quantity", type=int, default=1, help="Quantity to add")
     sp_add.add_argument("--category", help="Navigation category ID")
 
     sp_remove = cart_sub.add_parser("remove", parents=[common], help="Remove item from cart (decrease quantity)")
     sp_remove.add_argument("offer_id", help="Offer ID")
-    sp_remove.add_argument("seller_id", help="Seller ID")
+    sp_remove.add_argument("seller_id", nargs="?", default=None, help="Seller ID (optional, fetched if missing)")
     sp_remove.add_argument("--quantity", type=int, default=1, help="Quantity to remove")
 
     # --- packages ---
