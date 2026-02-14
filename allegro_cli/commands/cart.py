@@ -50,11 +50,21 @@ def handle_cart_list(args, client: AllegroClient) -> int:
 
 
 def handle_cart_add(args, client: AllegroClient) -> int:
+    seller_id = args.seller_id
+    category_id = getattr(args, "category", None)
+
+    if not seller_id:
+        # If seller_id is missing, fetch offer details to find it
+        offer = client.scrape_offer(args.offer_id)
+        seller_id = offer.seller.id
+        if not category_id:
+            category_id = offer.category.id
+
     client.change_cart_quantity(
         item_id=args.offer_id,
         delta=args.quantity,
-        seller_id=args.seller_id,
-        nav_category_id=getattr(args, "category", None),
+        seller_id=seller_id,
+        nav_category_id=category_id,
     )
     cart = client.get_cart()
     _output_cart(cart, args.format)
@@ -62,10 +72,30 @@ def handle_cart_add(args, client: AllegroClient) -> int:
 
 
 def handle_cart_remove(args, client: AllegroClient) -> int:
+    seller_id = args.seller_id
+    if not seller_id:
+        # Try to find seller_id in the cart
+        cart = client.get_cart()
+        for group in cart.get("cart", {}).get("groups", []):
+            for item in group.get("items", []):
+                for offer in item.get("offers", []):
+                    if offer.get("id") == args.offer_id:
+                        seller_id = group.get("seller", {}).get("id")
+                        break
+                if seller_id:
+                    break
+            if seller_id:
+                break
+        
+        if not seller_id:
+            # Fallback to scrape if not in cart (though remove implies it's in cart)
+            offer = client.scrape_offer(args.offer_id)
+            seller_id = offer.seller.id
+
     client.change_cart_quantity(
         item_id=args.offer_id,
         delta=-args.quantity,
-        seller_id=args.seller_id,
+        seller_id=seller_id,
     )
     cart = client.get_cart()
     _output_cart(cart, args.format)
