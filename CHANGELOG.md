@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.2 (2026-02-20)
+
+### Fix
+
+- Consolidate bump and release workflows into a single workflow and enhance version bump process
+
 ## v0.2.1 (2026-02-20)
 
 ### Fix
