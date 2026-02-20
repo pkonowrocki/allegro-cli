@@ -7,7 +7,6 @@ on:
 jobs:
   bump:
     runs-on: ubuntu-latest
-    # skip bumps created by this workflow to avoid infinite loops
     if: "!startsWith(github.event.head_commit.message, 'bump:')"
 
     permissions:
@@ -26,12 +25,26 @@ jobs:
       - run: pip install commitizen
 
       - name: Bump version
+        id: bump
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          cz bump --yes --changelog || echo "No commits to bump"
+          cz bump --yes --changelog --no-tag 2>&1 | tee /tmp/cz.log || true
+          NEW_VERSION=$(cz version --project)
+          TAG="v${NEW_VERSION}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          # Check if cz actually bumped (committed)
+          if git diff --quiet HEAD~1 HEAD -- pyproject.toml 2>/dev/null; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Push changes and tags
+      - name: Create tag and push
+        if: steps.bump.outputs.bumped == 'true'
         run: |
+          TAG="${{ steps.bump.outputs.tag }}"
+          echo "Creating tag ${TAG}"
+          git tag -a "${TAG}" -m "${TAG}"
           git push origin main
-          git push origin --tags
+          git push origin "${TAG}"
