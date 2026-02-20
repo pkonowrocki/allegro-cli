@@ -32,4 +32,6 @@ jobs:
           cz bump --yes --changelog || echo "No commits to bump"
 
       - name: Push changes and tags
-        run: git push --follow-tags
+        run: |
+          git push origin main
+          git push origin --tags
