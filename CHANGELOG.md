@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.1 (2026-02-20)
+
+### Fix
+
+- Simplify version bump process by consolidating steps and removing unnecessary outputs
+
 ## v0.2.0 (2026-02-20)
 
 ### Feat
