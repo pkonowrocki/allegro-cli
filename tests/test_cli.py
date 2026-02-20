@@ -85,6 +85,29 @@ def test_parser_search_all_filters():
     assert args.page == 2
 
 
+def test_parser_search_with_seller():
+    parser = create_parser()
+    args = parser.parse_args(["search", "minecraft", "--seller", "Muvepl"])
+    assert args.seller == "Muvepl"
+
+
+def test_parser_search_all_filters_with_seller():
+    parser = create_parser()
+    args = parser.parse_args([
+        "search", "laptop",
+        "--seller", "Muvepl",
+        "--sort", "p",
+        "--price-min", "500",
+        "--price-max", "3000",
+        "--page", "2",
+    ])
+    assert args.seller == "Muvepl"
+    assert args.sort == "p"
+    assert args.price_min == "500"
+    assert args.price_max == "3000"
+    assert args.page == 2
+
+
 def test_parser_offer():
     parser = create_parser()
     args = parser.parse_args(["offer", "some-id"])

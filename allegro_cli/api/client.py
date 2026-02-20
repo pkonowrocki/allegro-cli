@@ -59,6 +59,7 @@ class AllegroClient:
         sort: str | None = None,
         price_min: str | None = None,
         price_max: str | None = None,
+        seller: str | None = None,
     ) -> list[Offer]:
         if not self._config.cookies:
             raise AuthenticationError(
@@ -68,7 +69,9 @@ class AllegroClient:
 
         from allegro_cli.scraper import parse_search_results
 
-        if category:
+        if seller:
+            base_url = f"https://allegro.pl/uzytkownik/{seller}"
+        elif category:
             cat_match = re.search(r"(\d+)$", category)
             if cat_match:
                 base_url = f"https://allegro.pl/kategoria/-{cat_match.group(1)}"

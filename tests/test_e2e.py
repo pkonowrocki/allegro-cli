@@ -184,6 +184,60 @@ def test_e2e_search_with_price_range(capsys):
     assert "price_to=5000" in fetched_urls[0]
 
 
+def test_e2e_search_with_seller(capsys):
+    """URL should use /uzytkownik/{seller} base when --seller is set."""
+    fetched_urls = []
+
+    def capture_fetch(self, url):
+        fetched_urls.append(url)
+        return (FIXTURES / "search_results.html").read_text(encoding="utf-8")
+
+    with (
+        patch("allegro_cli.main.load_config", return_value=_mock_config()),
+        patch("allegro_cli.main.ensure_dirs"),
+        patch("sys.argv", [
+            "allegro", "search", "minecraft",
+            "--seller", "Muvepl",
+            "--format", "json",
+        ]),
+        patch("allegro_cli.api.client.AllegroClient._fetch_page", capture_fetch),
+    ):
+        result = main()
+
+    assert result == 0
+    assert len(fetched_urls) == 1
+    assert "/uzytkownik/Muvepl" in fetched_urls[0]
+    assert "string=minecraft" in fetched_urls[0]
+
+
+def test_e2e_search_with_seller_and_price(capsys):
+    """--seller combined with --price-min/--price-max should all appear in URL."""
+    fetched_urls = []
+
+    def capture_fetch(self, url):
+        fetched_urls.append(url)
+        return (FIXTURES / "search_results.html").read_text(encoding="utf-8")
+
+    with (
+        patch("allegro_cli.main.load_config", return_value=_mock_config()),
+        patch("allegro_cli.main.ensure_dirs"),
+        patch("sys.argv", [
+            "allegro", "search", "laptop",
+            "--seller", "Muvepl",
+            "--price-min", "100",
+            "--sort", "p",
+            "--format", "json",
+        ]),
+        patch("allegro_cli.api.client.AllegroClient._fetch_page", capture_fetch),
+    ):
+        result = main()
+
+    assert result == 0
+    assert "/uzytkownik/Muvepl" in fetched_urls[0]
+    assert "price_from=100" in fetched_urls[0]
+    assert "order=p" in fetched_urls[0]
+
+
 # --- Offer tests ---
 
 

@@ -63,6 +63,10 @@ def create_parser() -> argparse.ArgumentParser:
         help="Maximum price in PLN",
     )
     sp_search.add_argument(
+        "--seller", default=None,
+        help="Seller login (searches on seller's page, e.g. Muvepl)",
+    )
+    sp_search.add_argument(
         "--columns", default=None,
         help=f"Comma-separated columns (default: {_DEFAULT_COLUMNS})",
     )

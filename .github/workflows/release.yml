@@ -34,7 +34,13 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" dist/* --generate-notes --repo "${{ github.repository }}"
+        run: |
+          if gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists, uploading assets"
+            gh release upload "${{ github.ref_name }}" dist/* --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "${{ github.ref_name }}" dist/* --generate-notes --repo "${{ github.repository }}"
+          fi
 
   pypi:
     needs: build
