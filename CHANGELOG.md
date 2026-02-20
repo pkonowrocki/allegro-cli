@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.0 (2026-02-20)
+
+### Feat
+
+- Add seller filter to search functionality and update tests
+
 ## v0.1.1 (2026-02-12)
 
 ### Fix
