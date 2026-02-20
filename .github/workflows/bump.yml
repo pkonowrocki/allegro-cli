@@ -24,29 +24,13 @@ jobs:
 
       - run: pip install commitizen
 
-      - name: Bump version
-        id: bump
+      - name: Bump version and push
         run: |
-          OLD_VERSION=$(cz version --project)
-          cz bump --yes --changelog --files-only 2>&1 || true
-          NEW_VERSION=$(cz version --project)
-          if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
-            echo "No version bump needed"
-            echo "bumped=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Bumped ${OLD_VERSION} → ${NEW_VERSION}"
-            echo "bumped=true" >> "$GITHUB_OUTPUT"
-            echo "tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Commit, tag, and push
-        if: steps.bump.outputs.bumped == 'true'
-        run: |
-          TAG="${{ steps.bump.outputs.tag }}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add -A
-          git commit -m "bump: ${TAG}"
-          git tag -a "${TAG}" -m "${TAG}"
-          git push origin main
-          git push origin "${TAG}"
+          if cz bump --yes; then
+            git push origin main
+            git push origin --tags
+          else
+            echo "No version bump needed"
+          fi
