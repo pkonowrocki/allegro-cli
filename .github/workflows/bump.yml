@@ -27,24 +27,26 @@ jobs:
       - name: Bump version
         id: bump
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          cz bump --yes --changelog --files-only 2>&1 | tee /tmp/cz.log || true
+          OLD_VERSION=$(cz version --project)
+          cz bump --yes --changelog --files-only 2>&1 || true
           NEW_VERSION=$(cz version --project)
-          TAG="v${NEW_VERSION}"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          # Check if cz actually bumped (committed)
-          if git diff --quiet HEAD~1 HEAD -- pyproject.toml 2>/dev/null; then
+          if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
+            echo "No version bump needed"
             echo "bumped=false" >> "$GITHUB_OUTPUT"
           else
+            echo "Bumped ${OLD_VERSION} → ${NEW_VERSION}"
             echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create tag and push
+      - name: Commit, tag, and push
         if: steps.bump.outputs.bumped == 'true'
         run: |
           TAG="${{ steps.bump.outputs.tag }}"
-          echo "Creating tag ${TAG}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          git commit -m "bump: ${TAG}"
           git tag -a "${TAG}" -m "${TAG}"
           git push origin main
           git push origin "${TAG}"
