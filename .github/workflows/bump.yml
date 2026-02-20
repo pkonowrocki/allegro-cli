@@ -1,4 +1,4 @@
-name: Bump version
+name: Bump & Release
 
 on:
   push:
@@ -8,15 +8,17 @@ jobs:
   bump:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, 'bump:')"
-
     permissions:
       contents: write
+      id-token: write
+    outputs:
+      bumped: ${{ steps.bump.outputs.bumped }}
+      tag: ${{ steps.bump.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
@@ -25,12 +27,71 @@ jobs:
       - run: pip install commitizen
 
       - name: Bump version and push
+        id: bump
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           if cz bump --yes; then
+            TAG=$(git describe --tags --abbrev=0)
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
             git push origin main
-            git push origin --tags
+            git push origin "${TAG}"
           else
-            echo "No version bump needed"
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
           fi
+
+  release:
+    needs: bump
+    if: needs.bump.outputs.bumped == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.tag }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - run: pip install build
+      - run: python -m build
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.bump.outputs.tag }}"
+          if gh release view "${TAG}" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            gh release upload "${TAG}" dist/* --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "${TAG}" dist/* --generate-notes --repo "${{ github.repository }}"
+          fi
+
+  pypi:
+    needs: [bump, release]
+    if: needs.bump.outputs.bumped == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/allegro-cli
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.tag }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - run: pip install build
+      - run: python -m build
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
