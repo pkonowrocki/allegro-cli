@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.4 (2026-02-25)
+
+### Fix
+
+- Enhance cart item flattening for improved data handling and display
+
 ## v0.2.3 (2026-02-25)
 
 ### Fix
