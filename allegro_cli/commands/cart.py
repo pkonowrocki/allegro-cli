@@ -19,26 +19,46 @@ def _flatten_cart_items(cart: dict) -> list[dict]:
     """Flatten nested cart groups/items into flat rows for table display."""
     rows = []
     for group in cart.get("cart", {}).get("groups", []):
-        seller = group.get("seller", {}).get("login", "")
+        seller = group.get("seller", {})
+        if isinstance(seller, dict):
+            seller = seller.get("login", "")
+        else:
+            seller = str(seller) if seller else ""
         for item in group.get("items", []):
             offers = item.get("offers", [])
             offer = offers[0] if offers else {}
-            unit_price = item.get("unitPrice", {})
+            unit_price_val = item.get("unitPrice")
+            if isinstance(unit_price_val, dict):
+                unit_price_amount = unit_price_val.get("amount", "")
+                unit_price_currency = unit_price_val.get("currency", "PLN")
+            else:
+                unit_price_amount = str(unit_price_val) if unit_price_val else ""
+                unit_price_currency = "PLN"
             qty_val = item.get("quantity")
             if isinstance(qty_val, dict):
                 qty = str(qty_val.get("selected", ""))
             else:
                 qty = str(qty_val) if qty_val is not None else ""
+            price_val = item.get("price")
+            if isinstance(price_val, dict):
+                total_amount = price_val.get("amount", "")
+            else:
+                total_amount = str(price_val) if price_val else ""
+            selected_val = item.get("selected")
+            if isinstance(selected_val, bool):
+                selected = "yes" if selected_val else "no"
+            else:
+                selected = str(selected_val) if selected_val else "no"
             rows.append(
                 {
-                    "selected": "yes" if item.get("selected") else "no",
-                    "offer_id": offer.get("id", ""),
-                    "name": offer.get("name", ""),
+                    "selected": selected,
+                    "offer_id": offer.get("id", "") if isinstance(offer, dict) else "",
+                    "name": offer.get("name", "") if isinstance(offer, dict) else "",
                     "seller": seller,
                     "qty": qty,
-                    "unit_price": unit_price.get("amount", ""),
-                    "currency": unit_price.get("currency", "PLN"),
-                    "total": item.get("price", {}).get("amount", ""),
+                    "unit_price": unit_price_amount,
+                    "currency": unit_price_currency,
+                    "total": total_amount,
                 }
             )
     return rows
@@ -54,9 +74,15 @@ def _output_cart(cart: dict, fmt: str) -> None:
         output_tsv(rows, _CART_COLUMNS)
     else:
         output_text(rows, _CART_COLUMNS)
-        total = cart.get("cart", {}).get("prices", {}).get("total", {})
-        if total:
-            print(f"\nTotal: {total.get('amount', '?')} {total.get('currency', 'PLN')}")
+        total = cart.get("cart", {}).get("prices", {})
+        if isinstance(total, dict):
+            total_amount = total.get("amount", "?")
+            total_currency = total.get("currency", "PLN")
+        else:
+            total_amount = str(total) if total else "?"
+            total_currency = "PLN"
+        if total_amount and total_amount != "?":
+            print(f"\nTotal: {total_amount} {total_currency}")
 
 
 def handle_cart_list(args, client: AllegroClient) -> int:
