@@ -3,7 +3,16 @@ from __future__ import annotations
 from allegro_cli.api.client import AllegroClient
 from allegro_cli.output import output_json, output_text, output_tsv
 
-_CART_COLUMNS = ["selected", "offer_id", "name", "seller", "qty", "unit_price", "currency", "total"]
+_CART_COLUMNS = [
+    "selected",
+    "offer_id",
+    "name",
+    "seller",
+    "qty",
+    "unit_price",
+    "currency",
+    "total",
+]
 
 
 def _flatten_cart_items(cart: dict) -> list[dict]:
@@ -15,16 +24,23 @@ def _flatten_cart_items(cart: dict) -> list[dict]:
             offers = item.get("offers", [])
             offer = offers[0] if offers else {}
             unit_price = item.get("unitPrice", {})
-            rows.append({
-                "selected": "yes" if item.get("selected") else "no",
-                "offer_id": offer.get("id", ""),
-                "name": offer.get("name", ""),
-                "seller": seller,
-                "qty": str(item.get("quantity", {}).get("selected", "")),
-                "unit_price": unit_price.get("amount", ""),
-                "currency": unit_price.get("currency", "PLN"),
-                "total": item.get("price", {}).get("amount", ""),
-            })
+            qty_val = item.get("quantity")
+            if isinstance(qty_val, dict):
+                qty = str(qty_val.get("selected", ""))
+            else:
+                qty = str(qty_val) if qty_val is not None else ""
+            rows.append(
+                {
+                    "selected": "yes" if item.get("selected") else "no",
+                    "offer_id": offer.get("id", ""),
+                    "name": offer.get("name", ""),
+                    "seller": seller,
+                    "qty": qty,
+                    "unit_price": unit_price.get("amount", ""),
+                    "currency": unit_price.get("currency", "PLN"),
+                    "total": item.get("price", {}).get("amount", ""),
+                }
+            )
     return rows
 
 
@@ -86,7 +102,7 @@ def handle_cart_remove(args, client: AllegroClient) -> int:
                     break
             if seller_id:
                 break
-        
+
         if not seller_id:
             # Fallback to scrape if not in cart (though remove implies it's in cart)
             offer = client.scrape_offer(args.offer_id)
