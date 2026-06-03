@@ -1,6 +1,6 @@
 [project]
 name = "allegro-cli"
-version = "0.2.5"
+version = "0.3.0"
 description = "CLI for browsing Allegro offers, managing cart, and tracking packages — human-readable and LLM-agent friendly"
 requires-python = ">=3.10"
 authors = [
@@ -29,7 +29,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.2.5"
+version = "0.3.0"
 version_files = [
     "pyproject.toml:version",
     "allegro_cli/__init__.py:__version__",

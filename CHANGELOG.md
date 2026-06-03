@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.0 (2026-06-03)
+
+### Feat
+
+- add compact JSON output for LLMs and expanded search filters
+
+### Fix
+
+- correct argparse action for filters and update search handler
+
 ## v0.2.5 (2026-06-03)
 
 ### Fix
