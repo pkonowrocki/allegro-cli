@@ -274,6 +274,15 @@ class AllegroClient:
         )
         return resp.json()
 
+    def get_packages_list(self) -> list[dict]:
+        """Fetch the detailed list of current packages."""
+        resp = self._request(
+            "GET", "/packages",
+            accept="application/vnd.allegro.internal.v1+json",
+        )
+        data = resp.json()
+        return data.get("packages", [])
+
     # --- HTTP layer (edge API, cookie auth) ---
 
     def _request(
