@@ -17,16 +17,41 @@ _CART_COLUMNS = [
 
 def _flatten_cart_items(cart: dict) -> list[dict]:
     """Flatten nested cart groups/items into flat rows for table display."""
+    if not isinstance(cart, dict):
+        return []
+    
     rows = []
-    for group in cart.get("cart", {}).get("groups", []):
-        seller = group.get("seller", {})
+    cart_data = cart.get("cart", {})
+    if not isinstance(cart_data, dict):
+        return []
+        
+    groups = cart_data.get("groups", [])
+    if not isinstance(groups, list):
+        return []
+
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        seller = group.get("seller", "")
         if isinstance(seller, dict):
             seller = seller.get("login", "")
         else:
             seller = str(seller) if seller else ""
-        for item in group.get("items", []):
+        
+        items = group.get("items", [])
+        if not isinstance(items, list):
+            continue
+            
+        for item in items:
+            if not isinstance(item, dict):
+                continue
             offers = item.get("offers", [])
-            offer = offers[0] if offers else {}
+            if not isinstance(offers, list) or not offers:
+                continue
+            offer = offers[0]
+            if not isinstance(offer, dict):
+                offer = {}
+                
             unit_price_val = item.get("unitPrice")
             if isinstance(unit_price_val, dict):
                 unit_price_amount = unit_price_val.get("amount", "")
@@ -34,21 +59,25 @@ def _flatten_cart_items(cart: dict) -> list[dict]:
             else:
                 unit_price_amount = str(unit_price_val) if unit_price_val else ""
                 unit_price_currency = "PLN"
+                
             qty_val = item.get("quantity")
             if isinstance(qty_val, dict):
                 qty = str(qty_val.get("selected", ""))
             else:
                 qty = str(qty_val) if qty_val is not None else ""
+                
             price_val = item.get("price")
             if isinstance(price_val, dict):
                 total_amount = price_val.get("amount", "")
             else:
                 total_amount = str(price_val) if price_val else ""
+                
             selected_val = item.get("selected")
             if isinstance(selected_val, bool):
                 selected = "yes" if selected_val else "no"
             else:
                 selected = str(selected_val) if selected_val else "no"
+                
             rows.append(
                 {
                     "selected": selected,
@@ -118,27 +147,62 @@ def handle_cart_remove(args, client: AllegroClient) -> int:
     if not seller_id:
         # Try to find seller_id in the cart
         cart = client.get_cart()
-        for group in cart.get("cart", {}).get("groups", []):
-            for item in group.get("items", []):
-                for offer in item.get("offers", []):
-                    if offer.get("id") == args.offer_id:
-                        seller_id = group.get("seller", {}).get("id")
-                        break
-                if seller_id:
+def handle_cart_remove(args, client: AllegroClient) -> int:
+    # 1. Find the unique item_id (UUID) for the given offer_id in the cart
+    item_id_to_remove = None
+    
+    try:
+        cart = client.get_cart()
+    except Exception:
+        print("Error: Could not fetch cart.")
+        return 1
+
+    if not isinstance(cart, dict):
+        print(f"Error: Expected dict from get_cart, got {type(cart)}")
+        return 1
+
+    cart_data = cart.get("cart")
+    if not isinstance(cart_data, dict):
+        print("Error: Cart data missing or invalid.")
+        return 1
+        
+    groups = cart_data.get("groups", [])
+    if not isinstance(groups, list):
+        print("Error: Cart groups missing or invalid.")
+        return 1
+    
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        items = group.get("items", [])
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            offers = item.get("offers", [])
+            if not isinstance(offers, list):
+                continue
+            for offer in offers:
+                if isinstance(offer, dict) and offer.get("id") == args.offer_id:
+                    item_id_to_remove = item.get("id")
                     break
-            if seller_id:
+            if item_id_to_remove:
                 break
+        if item_id_to_remove:
+            break
 
-        if not seller_id:
-            # Fallback to scrape if not in cart (though remove implies it's in cart)
-            offer = client.scrape_offer(args.offer_id)
-            seller_id = offer.seller.id
+    if not item_id_to_remove:
+        print(f"Error: Offer {args.offer_id} not found in cart.")
+        return 1
 
-    client.change_cart_quantity(
-        item_id=args.offer_id,
-        delta=-args.quantity,
-        seller_id=seller_id,
-    )
+    # 2. Use the new DELETE endpoint
+    try:
+        client.remove_cart_item(item_id_to_remove)
+    except Exception as e:
+        print(f"Error removing item: {e}")
+        return 1
+    
     cart = client.get_cart()
     _output_cart(cart, args.format)
     return 0
