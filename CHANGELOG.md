@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.5 (2026-06-03)
+
+### Fix
+
+- implement correct cart item removal and improve bot detection bypass
+
 ## v0.2.4 (2026-02-25)
 
 ### Fix
