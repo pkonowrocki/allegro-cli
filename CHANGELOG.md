@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.0 (2026-06-03)
+
+### Feat
+
+- implement rich tables, custom exception hierarchy and mock client for tests
+
+### Fix
+
+- use relative path for mock fixtures in tests to fix CI failure
+
 ## v0.4.0 (2026-06-03)
 
 ### Feat
