@@ -504,6 +504,9 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
     # Title from <h1>
     h1 = soup.find("h1")
     title = h1.get_text(strip=True) if h1 else "Unknown Title"
+    if title == "Unknown Title":
+        from allegro_cli.api.models import ScraperError
+        raise ScraperError("Could not find offer title (h1 tag)", path="h1")
 
     # ID — from canonical URL or passed-in ID
     if not offer_id:
@@ -531,6 +534,10 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
             price_node = soup.find(string=lambda t: t and "zł" in t)
             if price_node:
                 price_amount = _clean_price(price_node.parent.get_text(strip=True))
+    
+    if not price_amount:
+        from allegro_cli.api.models import ScraperError
+        raise ScraperError("Could not find offer price", path="price")
 
     # Image — og:image or first product image
     image_url = ""

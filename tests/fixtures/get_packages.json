@@ -1,0 +1,1 @@
+{"status_code": 200, "body": {"packages": [{"content": {"description": "Mock Item"}, "delivery": {"waybill": "123", "status": "IN_TRANSIT"}}]}}

@@ -51,8 +51,8 @@ def test_e2e_search_text(capsys):
     out = capsys.readouterr().out
     assert "Laptop Lenovo ThinkPad" in out
     assert "Laptop Dell XPS 15" in out
-    # Should have header separator line
-    assert "---" in out
+    # Should have table border (rich table)
+    assert "┃" in out
 
 
 def test_e2e_search_json(capsys):

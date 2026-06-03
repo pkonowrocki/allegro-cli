@@ -82,7 +82,44 @@ class AuthenticationError(AllegroCliError):
         super().__init__(
             message=message,
             code="AuthenticationException",
-            userMessage="Could not authenticate. Check your client-id and client-secret.",
+            userMessage="Authentication failed. Please refresh your session cookies using 'allegro login'.",
+        )
+
+
+class OfferNotFoundError(AllegroCliError):
+    def __init__(self, offer_id: str):
+        super().__init__(
+            message=f"Offer {offer_id} not found",
+            code="OfferNotFoundException",
+            userMessage=f"The offer {offer_id} was not found. It might have been deleted or is no longer available.",
+        )
+
+
+class RateLimitError(AllegroCliError):
+    def __init__(self, message: str = "Rate limit exceeded", userMessage: str | None = None):
+        super().__init__(
+            message=message,
+            code="RateLimitException",
+            userMessage=userMessage or "Allegro is temporarily blocking requests. Please wait a few minutes and try again.",
+        )
+
+
+class ScraperError(AllegroCliError):
+    def __init__(self, message: str, path: str | None = None):
+        super().__init__(
+            message=message,
+            code="ScraperException",
+            path=path,
+            userMessage="The website structure has changed, and the scraper can no longer find the required information.",
+        )
+
+
+class CartError(AllegroCliError):
+    def __init__(self, message: str, code: str = "CartException"):
+        super().__init__(
+            message=message,
+            code=code,
+            userMessage=f"Shopping cart error: {message}",
         )
 
 
