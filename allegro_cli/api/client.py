@@ -60,6 +60,8 @@ class AllegroClient:
         price_min: str | None = None,
         price_max: str | None = None,
         seller: str | None = None,
+        condition: str | None = None,
+        free_shipping: bool = False,
     ) -> list[Offer]:
         if not self._config.cookies:
             raise AuthenticationError(
@@ -89,7 +91,10 @@ class AllegroClient:
             params["price_from"] = price_min
         if price_max:
             params["price_to"] = price_max
-
+        if condition:
+            params["state"] = condition
+        if free_shipping:
+            params["delivery"] = "free"
         full_url = base_url + "?" + urlencode(params)
 
         html = self._fetch_page(full_url)

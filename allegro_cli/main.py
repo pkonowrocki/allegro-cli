@@ -22,6 +22,12 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output format (default: text)",
     )
     common.add_argument(
+        "--compact",
+        action="store_true",
+        default=False,
+        help="Optimized JSON output for LLMs (minimal fields)",
+    )
+    common.add_argument(
         "-v", "--verbose",
         action="store_true",
         default=False,
@@ -65,6 +71,14 @@ def create_parser() -> argparse.ArgumentParser:
     sp_search.add_argument(
         "--seller", default=None,
         help="Seller login (searches on seller's page, e.g. Muvepl)",
+    )
+    sp_search.add_argument(
+        "--condition", choices=["new", "used"], default=None,
+        help="Item condition: new or used",
+    )
+    sp_search.add_argument(
+        "--free-shipping", action="store_true", default=False,
+        help="Filter for offers with free shipping",
     )
     sp_search.add_argument(
         "--columns", default=None,
