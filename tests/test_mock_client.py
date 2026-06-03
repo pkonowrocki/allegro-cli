@@ -5,7 +5,10 @@ from allegro_cli.config import Config
 
 def test_mock_client_packages():
     config = Config(cookies="mock_cookie")
-    client = MockAllegroClient(config, fixtures_path="/tmp/allegro-cli-repo/tests/fixtures")
+    import os
+    from pathlib import Path
+    fixtures_path = Path(__file__).parent / "fixtures"
+    client = MockAllegroClient(config, fixtures_path=str(fixtures_path))
     
     # Test summary
     summary = client.get_packages_summary()
@@ -20,7 +23,10 @@ def test_mock_client_packages():
 
 def test_mock_client_404():
     config = Config(cookies="mock_cookie")
-    client = MockAllegroClient(config, fixtures_path="/tmp/allegro-cli-repo/tests/fixtures")
+    import os
+    from pathlib import Path
+    fixtures_path = Path(__file__).parent / "fixtures"
+    client = MockAllegroClient(config, fixtures_path=str(fixtures_path))
     
     # Test non-existent fixture
     resp = client._request("GET", "/non-existent")
