@@ -14,6 +14,17 @@ def _get_columns(args) -> list[str]:
     return _DEFAULT_COLUMNS.split(",")
 
 
+def _compact_offer(offer) -> dict:
+    """Strip Offer down to the absolute essentials for LLM token efficiency."""
+    return {
+        "id": offer.id,
+        "name": offer.name,
+        "price": offer.sellingMode.price.amount,
+        "seller": offer.seller.name,
+        "image": offer.images[0].url if offer.images else None,
+    }
+
+
 def handle_search(args, client: AllegroClient) -> int:
     offers = client.scrape_search(
         phrase=args.phrase,
@@ -23,10 +34,19 @@ def handle_search(args, client: AllegroClient) -> int:
         price_min=getattr(args, "price_min", None),
         price_max=getattr(args, "price_max", None),
         seller=getattr(args, "seller", None),
+        condition=getattr(args, "condition", None),
+        smart=getattr(args, "smart", False),
+        delivery_time=getattr(args, "delivery_time", None),
+        location=getattr(args, "location", None),
+        pay=getattr(args, "pay", False),
+        filters=getattr(args, "filter", None),
     )
 
     if args.format == "json":
-        output_json([dataclasses.asdict(o) for o in offers])
+        data = [dataclasses.asdict(o) for o in offers]
+        if getattr(args, "compact", False):
+            data = [_compact_offer(o) for o in offers]
+        output_json(data)
     else:
         rows = [dataclasses.asdict(o) for o in offers]
         columns = _get_columns(args)

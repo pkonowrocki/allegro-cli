@@ -22,6 +22,12 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output format (default: text)",
     )
     common.add_argument(
+        "--compact",
+        action="store_true",
+        default=False,
+        help="Optimized JSON output for LLMs (minimal fields)",
+    )
+    common.add_argument(
         "-v", "--verbose",
         action="store_true",
         default=False,
@@ -65,6 +71,30 @@ def create_parser() -> argparse.ArgumentParser:
     sp_search.add_argument(
         "--seller", default=None,
         help="Seller login (searches on seller's page, e.g. Muvepl)",
+    )
+    sp_search.add_argument(
+        "--condition", nargs="+", choices=["new", "used"], default=None,
+        help="Item condition: new or used (can be multiple)",
+    )
+    sp_search.add_argument(
+        "--smart", action="store_true", default=False,
+        help="Filter for Allegro Smart offers",
+    )
+    sp_search.add_argument(
+        "--delivery-time", choices=["one_day", "two_day", "three_day"], default=None,
+        help="Delivery time filter",
+    )
+    sp_search.add_argument(
+        "--location", default=None,
+        help="Shipping location (e.g. polska)",
+    )
+    sp_search.add_argument(
+        "--pay", action="store_true", default=False,
+        help="Filter for Allegro Pay",
+    )
+    sp_search.add_argument(
+        "--filter", action="append", default=None,
+        help="Additional filters in 'key=value' format (e.g. --filter 'wielkosc-pamieci-ram=16 GB')",
     )
     sp_search.add_argument(
         "--columns", default=None,

@@ -60,6 +60,12 @@ class AllegroClient:
         price_min: str | None = None,
         price_max: str | None = None,
         seller: str | None = None,
+        condition: list[str] | None = None,
+        smart: bool = False,
+        delivery_time: str | None = None,
+        location: str | None = None,
+        pay: bool = False,
+        filters: list[str] | None = None,
     ) -> list[Offer]:
         if not self._config.cookies:
             raise AuthenticationError(
@@ -80,15 +86,32 @@ class AllegroClient:
         else:
             base_url = "https://allegro.pl/listing"
 
-        params: dict[str, str] = {"string": phrase}
+        # Use a list of tuples to support multiple values for the same key (e.g. stan=nowe&stan=used)
+        params: list[tuple[str, str]] = [("string", phrase)]
         if page > 1:
-            params["p"] = str(page)
+            params.append(("p", str(page)))
         if sort:
-            params["order"] = sort
+            params.append(("order", sort))
         if price_min:
-            params["price_from"] = price_min
+            params.append(("price_from", price_min))
         if price_max:
-            params["price_to"] = price_max
+            params.append(("price_to", price_max))
+        if condition:
+            for c in condition:
+                params.append(("stan", c))
+        if smart:
+            params.append(("allegro-smart-standard", "1"))
+        if delivery_time:
+            params.append(("delivery_time", delivery_time))
+        if location:
+            params.append(("miejsce-wysylki", location))
+        if pay:
+            params.append(("allegro-pay", "1"))
+        if filters:
+            for f in filters:
+                if "=" in f:
+                    k, v = f.split("=", 1)
+                    params.append((k, v))
 
         full_url = base_url + "?" + urlencode(params)
 
