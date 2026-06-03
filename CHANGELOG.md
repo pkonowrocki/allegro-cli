@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.0 (2026-06-03)
+
+### Feat
+
+- implement detailed package tracking
+
 ## v0.3.0 (2026-06-03)
 
 ### Feat
