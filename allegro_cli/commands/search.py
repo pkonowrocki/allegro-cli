@@ -35,7 +35,11 @@ def handle_search(args, client: AllegroClient) -> int:
         price_max=getattr(args, "price_max", None),
         seller=getattr(args, "seller", None),
         condition=getattr(args, "condition", None),
-        free_shipping=getattr(args, "free_shipping", False),
+        smart=getattr(args, "smart", False),
+        delivery_time=getattr(args, "delivery_time", None),
+        location=getattr(args, "location", None),
+        pay=getattr(args, "pay", False),
+        filters=getattr(args, "filter", None),
     )
 
     if args.format == "json":
