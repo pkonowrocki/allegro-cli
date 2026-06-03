@@ -260,6 +260,8 @@ def _extract_parameters_from_serialized_json(soup: BeautifulSoup) -> dict[str, s
         if not groups or not isinstance(groups, list):
             continue
         for group in groups:
+            if not isinstance(group, dict):
+                continue
             for param in group.get("singleValueParams", []):
                 name = param.get("name", "")
                 value = param.get("value", {})
@@ -313,6 +315,8 @@ def _extract_parameters_from_json(html: str) -> dict[str, str]:
 
     result: dict[str, str] = {}
     for item in params_list:
+        if not isinstance(item, dict):
+            continue
         name = item.get("name", "")
         value = item.get("value") or item.get("values", "")
         if isinstance(value, list):
@@ -418,6 +422,8 @@ def _walk_for_params(data, result: dict[str, str]) -> None:
         groups = data.get("groups")
         if isinstance(groups, list):
             for group in groups:
+                if not isinstance(group, dict):
+                    continue
                 for param in group.get("singleValueParams", []):
                     name = param.get("name", "")
                     value = param.get("value", {})
