@@ -5,6 +5,12 @@ import json
 import sys
 from typing import Any
 
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+
+console = Console()
+
 
 def _to_serializable(obj: Any) -> Any:
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
@@ -20,6 +26,7 @@ def output_json(data: Any, file=None) -> None:
 
 def output_error(errors: list[dict], file=None) -> None:
     file = file or sys.stderr
+    # For agent compatibility, we keep JSON output for errors
     json.dump({"errors": errors}, file, indent=2, ensure_ascii=False)
     print(file=file)
 
@@ -56,29 +63,18 @@ def _get_nested(d: dict, key: str) -> str:
 
 
 def output_text(rows: list[dict], columns: list[str], file=None) -> None:
-    file = file or sys.stdout
     if not rows:
-        print("(no results)", file=file)
+        console.print("[yellow](no results)[/yellow]")
         return
 
-    # compute column widths
-    widths = {col: len(col) for col in columns}
-    str_rows = []
+    table = Table(show_header=True, header_style="bold magenta")
+    for col in columns:
+        table.add_column(col)
+
     for row in rows:
-        sr = {col: _get_nested(row, col) for col in columns}
-        for col in columns:
-            widths[col] = max(widths[col], len(sr[col]))
-        str_rows.append(sr)
+        table.add_row(*[_get_nested(row, col) for col in columns])
 
-    # header
-    header = "  ".join(col.ljust(widths[col]) for col in columns)
-    print(header, file=file)
-    print("  ".join("-" * widths[col] for col in columns), file=file)
-
-    # rows
-    for sr in str_rows:
-        line = "  ".join(sr[col].ljust(widths[col]) for col in columns)
-        print(line, file=file)
+    console.print(table)
 
 
 def output_tsv(rows: list[dict], columns: list[str], file=None) -> None:

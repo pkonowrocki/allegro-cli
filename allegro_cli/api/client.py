@@ -10,6 +10,10 @@ from curl_cffi.requests import Session as CffiSession
 from allegro_cli.api.models import (
     AllegroCliError,
     AuthenticationError,
+    OfferNotFoundError,
+    RateLimitError,
+    ScraperError,
+    CartError,
     Offer,
 )
 from allegro_cli.config import Config
@@ -125,16 +129,22 @@ class AllegroClient:
                 "No cookies configured. Scrape requires browser cookies.\n"
                 "Run: allegro login"
             )
-
         from allegro_cli.scraper import (
             extract_lazy_contexts,
             parse_offer_page,
         )
-
         url = f"https://allegro.pl/oferta/-{offer_id}"
-        html = self._fetch_page(url)
+        try:
+            html = self._fetch_page(url)
+        except AllegroCliError as e:
+            if e.code == "NotFoundException":
+                raise OfferNotFoundError(offer_id)
+            raise e
+            
         offer = parse_offer_page(html, offer_id=offer_id)
-
+        if not offer:
+            raise OfferNotFoundError(offer_id)
+ 
         # If we only got a few params, try lazy loading the rest
         if len(offer.parameters) < 15:
             contexts = extract_lazy_contexts(html)
@@ -142,7 +152,7 @@ class AllegroClient:
                 lazy_params = self._fetch_lazy_parameters(url, contexts)
                 for k, v in lazy_params.items():
                     offer.parameters.setdefault(k, v)
-
+ 
         return offer
 
     def _fetch_lazy_parameters(
@@ -187,20 +197,27 @@ class AllegroClient:
             resp = self._web.get(url, timeout=30)
             elapsed = time.monotonic() - t0
             self._log(f"Response: {resp.status_code} ({elapsed:.1f}s)")
-
+ 
             if resp.status_code == 200:
                 return resp.text
-
+ 
             if resp.status_code == 401:
                 raise AuthenticationError("Session expired (401). Run: allegro login")
-
+ 
             if resp.status_code == 403:
-                raise AllegroCliError(
+                raise RateLimitError(
                     message="Forbidden (403) - DataDome challenge",
-                    code="ForbiddenException",
                     userMessage="Access denied by Allegro's anti-bot system. Please refresh your cookies using 'allegro login'.",
                 )
-
+ 
+            if resp.status_code == 404:
+                # We don't know the ID here, but the caller can wrap this
+                raise AllegroCliError(
+                    message=f"Page not found (404): {url}",
+                    code="NotFoundException",
+                    userMessage="The requested page was not found.",
+                )
+ 
             raise AllegroCliError(
                 message=f"Scrape returned {resp.status_code}: {resp.text[:300]}",
                 code="ScrapeException",
@@ -297,22 +314,25 @@ class AllegroClient:
         headers = {"accept": accept}
         if content_type:
             headers["content-type"] = content_type
-
+ 
         resp = edge.request(method, path, headers=headers, **kwargs)
         if self._verbose:
             print(f"DEBUG: {method} {path} -> {resp.status_code}")
             print(f"DEBUG Response: {resp.text}")
         if resp.status_code == 401:
-            raise AuthenticationError(
-                "Session expired (401). Run: allegro login"
-            )
+            raise AuthenticationError("Session expired (401). Run: allegro login")
         if resp.status_code == 403:
-            raise AllegroCliError(
+            raise RateLimitError(
                 message="Forbidden (403)",
-                code="ForbiddenException",
                 userMessage="Access denied. Your session cookies may have expired.",
             )
         if resp.status_code >= 400 and resp.status_code != 204:
+            # Check if it's a cart-related endpoint
+            if "/cart" in path or "/carts" in path:
+                raise CartError(
+                    message=f"API returned {resp.status_code}: {resp.text[:300]}",
+                    code="CartApiException",
+                )
             raise AllegroCliError(
                 message=f"API returned {resp.status_code}: {resp.text[:300]}",
                 code="ApiException",
