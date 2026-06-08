@@ -27,7 +27,7 @@
 
 **From GitHub Releases** (recommended):
 ```bash
-pip install https://github.com/pkonowrocki/allegro-cli/releases/latest/download/allegro_cli-0.1.0-py3-none-any.whl
+pip install https://github.com/pkonowrocki/allegro-cli/releases/latest/download/allegro_cli-0.6.0-py3-none-any.whl
 ```
 
 **From source (latest)**:
@@ -60,18 +60,33 @@ allegro search "kawa ziarnista" --condition new --smart --delivery-time one_day 
 
 # Filter by custom criteria (e.g., specific brand or parameter)
 allegro search "laptop" --filter "marka=Apple"
+
+# Search on a specific seller's page
+allegro search "kawa" --seller Muvepl
+
+# Price range
+allegro search "laptop" --price-min 1000 --price-max 3000
+
+# Allegro Pay offers only
+allegro search "iphone" --pay
 ```
 
 **Search Flags:**
 | Flag | Description | Examples |
 |------|-------------|----------|
 | `--category` | Category ID or slug | `491`, `laptopy-491` |
-| `--sort` | `p` (price $\uparrow$), `pd` (price $\downarrow$), `m` (relevance), `n` (newest) | `--sort pd` |
-| `--condition` | Product condition | `new`, `used` |
+| `--sort` | `p` (price ↑), `pd` (price ↓), `m` (relevance), `n` (newest) | `--sort pd` |
+| `--condition` | Product condition (can specify multiple) | `--condition new`, `--condition new used` |
 | `--smart` | Filter for Allegro Smart | `--smart` |
 | `--free-shipping`| Only free delivery | `--free-shipping` |
-| `--delivery-time`| Delivery speed | `one_day` |
-| `--filter` | Key=Value custom filter | `--filter "color=black"` |
+| `--delivery-time`| Delivery speed | `one_day`, `two_day`, `three_day` |
+| `--price-min` | Minimum price in PLN | `--price-min 100` |
+| `--price-max` | Maximum price in PLN | `--price-max 500` |
+| `--seller` | Search on seller's page | `--seller Muvepl` |
+| `--pay` | Filter for Allegro Pay | `--pay` |
+| `--location` | Shipping location | `--location polska` |
+| `--filter` | Key=Value custom filter (repeatable) | `--filter "color=black"` |
+| `--columns` | Custom output columns | `--columns id,name,seller.name` |
 
 ### 📦 Manage Your Shopping
 
@@ -83,9 +98,11 @@ allegro offer 12345678
 
 **Cart:**
 ```bash
-allegro cart list           # View current items
-allegro cart add ID SELLER   # Add item to cart
-allegro cart remove ID SELLER # Remove item from cart
+allegro cart list                      # View current items
+allegro cart add OFFER_ID              # Add item to cart (seller auto-detected)
+allegro cart add OFFER_ID SELLER_ID    # Add item with explicit seller
+allegro cart add OFFER_ID --quantity 3 # Add multiple units
+allegro cart remove OFFER_ID           # Remove item from cart
 ```
 
 **Tracking:**
