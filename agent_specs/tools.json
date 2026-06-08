@@ -1,0 +1,68 @@
+[
+  {
+    "name": "allegro_search",
+    "description": "Search for products on Allegro.pl. Returns a list of offers with prices and IDs.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "Search keyword" },
+        "category": { "type": "string", "description": "Category ID or slug (e.g., '491')" },
+        "sort": { "type": "string", "enum": ["p", "pd", "m", "n"], "description": "Sort: p=price asc, pd=price desc, m=relevance, n=newest" },
+        "price_min": { "type": "string", "description": "Minimum price in PLN" },
+        "price_max": { "type": "string", "description": "Maximum price in PLN" },
+        "condition": { "type": "string", "enum": ["new", "used"], "description": "Product condition" },
+        "smart": { "type": "boolean", "description": "Filter for Allegro Smart" },
+        "free_shipping": { "type": "boolean", "description": "Only free delivery" },
+        "delivery_time": { "type": "string", "enum": ["one_day"], "description": "Delivery speed" },
+        "filter": { "type": "string", "description": "Custom filter in 'key=value' format (e.g., 'marka=Apple')" }
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "allegro_offer_details",
+    "description": "Get detailed specifications and price for a specific Allegro offer.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "offer_id": { "type": "string", "description": "The unique ID of the offer" }
+      },
+      "required": ["offer_id"]
+    }
+  },
+  {
+    "name": "allegro_cart_list",
+    "description": "List all items currently in the user's Allegro shopping cart.",
+    "parameters": { "type": "object", "properties": {} }
+  },
+  {
+    "name": "allegro_cart_add",
+    "description": "Add a specific offer to the shopping cart.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "offer_id": { "type": "string", "description": "ID of the offer" },
+        "seller_id": { "type": "string", "description": "ID of the seller" },
+        "quantity": { "type": "integer", "description": "Quantity to add", "default": 1 }
+      },
+      "required": ["offer_id", "seller_id"]
+    }
+  },
+  {
+    "name": "allegro_cart_remove",
+    "description": "Remove a specific item from the shopping cart.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "offer_id": { "type": "string", "description": "ID of the offer" },
+        "seller_id": { "type": "string", "description": "ID of the seller" }
+      },
+      "required": ["offer_id", "seller_id"]
+    }
+  },
+  {
+    "name": "allegro_track_packages",
+    "description": "Get a list of all active shipments and their current delivery status.",
+    "parameters": { "type": "object", "properties": {} }
+  }
+]

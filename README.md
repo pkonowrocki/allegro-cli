@@ -1,135 +1,120 @@
-# allegro-cli
+# 🛒 allegro-cli
 
 [![CI](https://github.com/pkonowrocki/allegro-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/pkonowrocki/allegro-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://spdx.org/licenses/mit.html)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-CLI for browsing [Allegro](https://allegro.pl) offers, managing your cart, and tracking packages. Designed to be both human-readable and LLM-agent friendly.
+**The power-user's gateway to Allegro.**
 
-All output is available as aligned text tables, JSON, or TSV — pick what suits your workflow or pipe it into other tools.
+`allegro-cli` is a high-performance command-line interface for browsing offers, managing carts, and tracking packages on Allegro.pl. It is designed for two types of users: **power-users** who want to automate their shopping and **AI Agents** who need structured, token-efficient access to marketplace data.
 
-## Install
+---
+
+## ✨ Key Features
+
+- **🚀 Agent-First Design**: Optimized JSON outputs (`--compact`) to minimize LLM token usage while maximizing data density.
+- **🎨 Rich UX**: Beautifully formatted, color-coded tables for humans.
+- **🔍 Advanced Filtering**: Precision search with filters for condition, free shipping, Allegro Smart, and delivery speed.
+- **📦 Full Tracking**: Detailed package tracking beyond simple summaries.
+- **🛡️ Bot Bypass**: Integrated TLS fingerprinting via `curl_cffi` to transparently handle anti-bot protections (DataDome) without external dependencies.
+- **🛠️ Extensible**: Pure Python implementation, easy to integrate into larger automation pipelines.
+
+---
+
+## 🚀 Quick Start
+
+### Installation
 
 **From GitHub Releases** (recommended):
-
 ```bash
 pip install https://github.com/pkonowrocki/allegro-cli/releases/latest/download/allegro_cli-0.1.0-py3-none-any.whl
 ```
 
 **From source (latest)**:
-
 ```bash
 pip install git+https://github.com/pkonowrocki/allegro-cli.git
 ```
 
-**For development**:
+### Setup
 
-```bash
-git clone https://github.com/pkonowrocki/allegro-cli.git
-cd allegro-cli
-pip install -e ".[dev]"
-```
-
-## Setup
-
-Import cookies from your browser:
+To access personalized data (cart, packages), you need to provide your session cookies:
 
 ```bash
 allegro login
 ```
+*Follow the prompt to paste your cookies from Chrome DevTools (Application $\rightarrow$ Cookies $\rightarrow$ allegro.pl).*
 
-Paste cookies from Chrome DevTools (Application > Cookies > allegro.pl). Both the DevTools table format and raw cookie header strings are accepted.
+---
 
-Alternatively, set cookies directly:
+## 📖 Usage
+
+### 🔍 Search for Products
+Find exactly what you need with advanced filters:
 
 ```bash
-allegro config set --cookies 'cookie1=value1; cookie2=value2'
+# Basic search
+allegro search "kawa ziarnista"
+
+# Power-user search: New, with Allegro Smart, delivered in 1 day, sorted by price ascending
+allegro search "kawa ziarnista" --condition new --smart --delivery-time one_day --sort p
+
+# Filter by custom criteria (e.g., specific brand or parameter)
+allegro search "laptop" --filter "marka=Apple"
 ```
 
-## Usage
+**Search Flags:**
+| Flag | Description | Examples |
+|------|-------------|----------|
+| `--category` | Category ID or slug | `491`, `laptopy-491` |
+| `--sort` | `p` (price $\uparrow$), `pd` (price $\downarrow$), `m` (relevance), `n` (newest) | `--sort pd` |
+| `--condition` | Product condition | `new`, `used` |
+| `--smart` | Filter for Allegro Smart | `--smart` |
+| `--free-shipping`| Only free delivery | `--free-shipping` |
+| `--delivery-time`| Delivery speed | `one_day` |
+| `--filter` | Key=Value custom filter | `--filter "color=black"` |
 
-### Search
+### 📦 Manage Your Shopping
 
+**Offers:**
 ```bash
-allegro search "laptop"
-allegro search "laptop" --category 491
-allegro search "laptop" --category laptopy-491 --sort pd --price-min 2000 --price-max 5000
-allegro search "laptop" --columns "id,name,sellingMode.price.amount,parameters"
-```
-
-| Flag | Description |
-|------|-------------|
-| `--category` | Category ID or slug (e.g. `491`, `laptopy-491`) |
-| `--sort` | Sort order: `p` (price asc), `pd` (price desc), `m` (relevance), `n` (newest) |
-| `--price-min` | Minimum price in PLN |
-| `--price-max` | Maximum price in PLN |
-| `--page` | Page number (default: 1) |
-| `--columns` | Comma-separated columns to display |
-
-### Offer details
-
-```bash
+# Get full details and extracted product specifications
 allegro offer 12345678
-allegro offer 12345678 --columns "name,sellingMode.price.amount,parameters"
 ```
 
-Offer pages include a `parameters` field with product specifications (e.g. processor, RAM, screen size) extracted automatically from the listing.
-
-### Cart
-
+**Cart:**
 ```bash
-allegro cart list
-allegro cart add OFFER_ID SELLER_ID --quantity 2
-allegro cart remove OFFER_ID SELLER_ID
+allegro cart list           # View current items
+allegro cart add ID SELLER   # Add item to cart
+allegro cart remove ID SELLER # Remove item from cart
 ```
 
-### Packages
-
+**Tracking:**
 ```bash
-allegro packages
+allegro packages            # List all active shipments with detailed status
 ```
 
-### Configuration
+---
+
+## 🤖 For AI Agents (LLM Optimization)
+
+If you are building an AI agent, use the `--format json` and `--compact` flags. The compact mode strips unnecessary metadata to save tokens while keeping all critical data points.
 
 ```bash
-allegro config show
-allegro config set --output-format json
-allegro config set --flaresolverr-url http://localhost:8191/v1
+allegro search "mechanical keyboard" --format json --compact
 ```
 
-## Output formats
+---
 
-All commands support `--format text` (default), `--format json`, and `--format tsv`.
-
-```bash
-allegro search "laptop" --format json     # full JSON array
-allegro search "laptop" --format tsv      # tab-separated, pipe-friendly
-allegro search "laptop"                   # aligned text table (default)
-allegro offer 12345678 --format json      # full offer with parameters
-```
-
-Use `--columns` to select specific fields (dot-notation supported):
+## 🛠️ Development
 
 ```bash
-allegro search "laptop" --columns "id,name,sellingMode.price.amount"
-allegro offer 12345678 --columns "name,parameters"
-```
-
-Set a persistent default:
-
-```bash
-allegro config set --output-format json
-```
-
-## Anti-bot handling
-
-Allegro uses anti-bot protection (DataDome). The CLI first tries a direct request with your cookies via `curl_cffi` (Chrome TLS fingerprint). If that gets a 403, it falls back to [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr):
-
-```bash
-docker run -d --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
-```
-
-## Development
-
-```bash
+# Install dev dependencies
 pip install -e ".[dev]"
+
+# Run the test suite (including Mock Client tests)
 pytest
 ```
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
