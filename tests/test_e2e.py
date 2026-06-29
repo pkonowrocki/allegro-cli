@@ -15,7 +15,7 @@ def _mock_config():
         cookies="session=test",
         edgeBaseUrl="https://edge.allegro.pl",
         outputFormat="text",
-        flareSolverrUrl=None,
+        cloakLicenseKey=None,
     )
 
 
@@ -62,11 +62,15 @@ def test_e2e_search_json(capsys):
     )
     assert result == 0
     data = json.loads(capsys.readouterr().out)
-    assert isinstance(data, list)
-    assert len(data) == 2
-    assert data[0]["name"] == "Laptop Lenovo ThinkPad"
-    assert data[1]["name"] == "Laptop Dell XPS 15"
-    assert data[0]["sellingMode"]["price"]["amount"] == "3499.00"
+    assert isinstance(data, dict)
+    assert "offers" in data
+    assert "page" in data
+    assert "hasNextPage" in data
+    assert len(data["offers"]) == 2
+    assert data["offers"][0]["name"] == "Laptop Lenovo ThinkPad"
+    assert data["offers"][1]["name"] == "Laptop Dell XPS 15"
+    assert data["offers"][0]["sellingMode"]["price"]["amount"] == "3499.00"
+    assert data["page"] == 1
 
 
 def test_e2e_search_tsv(capsys):
@@ -238,6 +242,29 @@ def test_e2e_search_with_seller_and_price(capsys):
     assert "order=p" in fetched_urls[0]
 
 
+def test_e2e_search_with_free_shipping(capsys):
+    """--free-shipping should produce the same URL param as --smart."""
+    fetched_urls = []
+
+    def capture_fetch(self, url):
+        fetched_urls.append(url)
+        return (FIXTURES / "search_results.html").read_text(encoding="utf-8")
+
+    with (
+        patch("allegro_cli.main.load_config", return_value=_mock_config()),
+        patch("allegro_cli.main.ensure_dirs"),
+        patch("sys.argv", [
+            "allegro", "search", "laptop",
+            "--free-shipping", "--format", "json",
+        ]),
+        patch("allegro_cli.api.client.AllegroClient._fetch_page", capture_fetch),
+    ):
+        result = main()
+
+    assert result == 0
+    assert "allegro-smart-standard=1" in fetched_urls[0]
+
+
 # --- Offer tests ---
 
 
@@ -252,6 +279,7 @@ def test_e2e_offer_json(capsys):
     assert data["name"] == "Laptop Lenovo ThinkPad X1 Carbon Gen 11"
     assert data["sellingMode"]["price"]["amount"] == "4599.00"
     assert data["seller"]["id"] == "99999"
+    assert data["url"] == "https://allegro.pl/oferta/laptop-lenovo-thinkpad-x1-12345678"
     assert len(data["images"]) == 1
     assert "parameters" in data
 
@@ -280,7 +308,8 @@ def test_e2e_search_empty(capsys):
     )
     assert result == 0
     data = json.loads(capsys.readouterr().out)
-    assert data == []
+    assert isinstance(data, dict)
+    assert data["offers"] == []
 
 
 def test_e2e_search_empty_text(capsys):
@@ -394,7 +423,7 @@ def test_e2e_missing_cookies(capsys):
         cookies=None,
         edgeBaseUrl="https://edge.allegro.pl",
         outputFormat="text",
-        flareSolverrUrl=None,
+        cloakLicenseKey=None,
     )
 
     with (
@@ -408,3 +437,35 @@ def test_e2e_missing_cookies(capsys):
     err = capsys.readouterr().err
     data = json.loads(err)
     assert data["errors"][0]["code"] == "AuthenticationException"
+
+
+# --- Compact mode tests ---
+
+
+def test_e2e_search_compact(capsys):
+    result = _run_cli(
+        ["search", "laptop", "--format", "json", "--compact"],
+        fixture="search_results.html",
+    )
+    assert result == 0
+    data = json.loads(capsys.readouterr().out)
+    assert "offers" in data
+    assert "page" in data
+    assert "hasNextPage" in data
+    assert "nextPageUrl" not in data  # compact strips nextPageUrl
+    offer = data["offers"][0]
+    assert set(offer.keys()) == {"id", "name", "price", "seller", "url", "smart"}
+    assert offer["name"] == "Laptop Lenovo ThinkPad"
+    assert offer["url"] == "https://allegro.pl/oferta/laptop-lenovo-thinkpad-x1-12345678"
+
+
+def test_e2e_offer_compact(capsys):
+    result = _run_cli(
+        ["offer", "12345678", "--format", "json", "--compact"],
+        fixture="offer_page.html",
+    )
+    assert result == 0
+    data = json.loads(capsys.readouterr().out)
+    assert set(data.keys()) == {"id", "name", "price", "seller", "url", "smart", "parameters"}
+    assert data["id"] == "12345678"
+    assert data["parameters"]["Procesor"] == "Intel Core i7-1365U"

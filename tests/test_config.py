@@ -9,7 +9,7 @@ def test_load_default_config(tmp_path: Path):
     assert config.cookies is None
     assert config.edgeBaseUrl == "https://edge.allegro.pl"
     assert config.outputFormat == "text"
-    assert config.flareSolverrUrl is None
+    assert config.cloakLicenseKey is None
 
 
 def test_save_and_load_config(tmp_path: Path):
@@ -29,4 +29,4 @@ def test_config_json_uses_camel_case(tmp_path: Path):
     assert "edgeBaseUrl" in raw
     assert "edge_base_url" not in raw
     assert "outputFormat" in raw
-    assert "flareSolverrUrl" in raw
+    assert "cloakLicenseKey" in raw

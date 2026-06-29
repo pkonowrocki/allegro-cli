@@ -5,6 +5,7 @@ from allegro_cli.scraper import (
     parse_opbox_parameters,
     parse_search_results,
 )
+from allegro_cli.api.models import SearchResult
 
 SAMPLE_HTML = """\
 <html>
@@ -97,12 +98,14 @@ def test_parse_search_results_extracts_offers():
     assert offers[0].name == "Laptop Dell 15 i7 16GB 512GB"
     assert offers[0].sellingMode.price.amount == "1299.00"
     assert offers[0].sellingMode.price.currency == "PLN"
+    assert offers[0].url == "https://allegro.pl/oferta/laptop-dell-15-i7-16gb-512gb-12345678"
     assert len(offers[0].images) == 1
     assert "abc123" in offers[0].images[0].url
 
     assert offers[1].id == "87654321"
     assert offers[1].name == "Laptop Lenovo 14"
     assert offers[1].sellingMode.price.amount == "899.99"
+    assert offers[1].url == "https://allegro.pl/oferta/laptop-lenovo-14-87654321"
 
     assert offers[2].id == "11111111"
     assert offers[2].name == "Item Without Price"
@@ -169,6 +172,7 @@ def test_parse_offer_page_meta_price():
     assert offer.name == "Laptop Dell 15 i7 16GB"
     assert offer.sellingMode.price.amount == "2499.00"
     assert offer.seller.id == "98765"
+    assert offer.url == "https://allegro.pl/oferta/laptop-dell-15-12345678"
     assert len(offer.images) == 1
     assert "offer.jpg" in offer.images[0].url
     assert offer.parameters == {}
@@ -185,6 +189,7 @@ def test_parse_offer_page_with_explicit_id():
     assert offer.id == "99999999"
     assert offer.name == "Some Offer"
     assert offer.sellingMode.price.amount == "1299.00"
+    assert offer.url == "https://allegro.pl/oferta/-99999999"
     assert offer.parameters == {}
 
 
@@ -471,3 +476,98 @@ def test_parse_opbox_parameters_nested():
 def test_parse_opbox_parameters_empty():
     assert parse_opbox_parameters({}) == {}
     assert parse_opbox_parameters({"foo": "bar"}) == {}
+
+
+# --- __NEXT_DATA__ extraction tests ---
+
+
+NEXT_DATA_HTML = """\
+<html><body>
+  <script id="__NEXT_DATA__" type="application/json">
+  {
+    "props": {
+      "pageProps": {
+        "items": [
+          {
+            "id": 12345678,
+            "name": "Laptop Test",
+            "url": "https://allegro.pl/oferta/laptop-test-12345678",
+            "price": {"normal": {"amount": "1999.00"}, "amount": "1999.00"},
+            "images": [{"url": "https://img.allegro.pl/test.jpg"}],
+            "seller": {"id": "55555", "login": "testseller"},
+            "sellingMode": {"format": "BUY_NOW"},
+            "delivery": {"lowestPrice": {"amount": "0.00", "currency": "PLN"}, "availableForFree": true},
+            "stock": {"available": 7, "unit": "UNIT"},
+            "popularity": 42
+          }
+        ]
+      }
+    }
+  }
+  </script>
+</body></html>
+"""
+
+
+def test_parse_search_results_json_extracts_delivery_stock():
+    offers = parse_search_results(NEXT_DATA_HTML)
+    assert len(offers) == 1
+    o = offers[0]
+    assert o.id == "12345678"
+    assert o.url == "https://allegro.pl/oferta/laptop-test-12345678"
+    assert o.seller.name == "testseller"
+    assert o.delivery is not None
+    assert o.delivery.lowestPrice is not None
+    assert o.delivery.lowestPrice.amount == "0.00"
+    assert o.delivery.availableForFree is True
+    assert o.stock is not None
+    assert o.stock.available == 7
+    assert o.sellingMode.popularity == 42
+    assert o.sellingMode.format == "BUY_NOW"
+
+
+def test_parse_search_results_json_selling_mode_auction():
+    html = """\
+<html><body>
+  <script id="__NEXT_DATA__" type="application/json">
+  {
+    "props": {
+      "pageProps": {
+        "items": [
+          {
+            "id": 99999999,
+            "name": "Auction Item",
+            "url": "https://allegro.pl/oferta/auction-item-99999999",
+            "price": {"normal": {"amount": "10.00"}, "amount": "10.00"},
+            "images": [],
+            "seller": {"id": "1", "login": "seller"},
+            "sellingMode": {"format": "AUCTION"},
+            "delivery": {"lowestPrice": {"amount": "5.00", "currency": "PLN"}, "availableForFree": false},
+            "stock": {"available": 1, "unit": "UNIT"}
+          }
+        ]
+      }
+    }
+  }
+  </script>
+</body></html>
+"""
+    offers = parse_search_results(html)
+    assert offers[0].sellingMode.format == "AUCTION"
+    assert offers[0].delivery.availableForFree is False
+
+
+# --- SearchResult tests ---
+
+
+def test_search_result_dataclass():
+    sr = SearchResult(offers=[], page=1, hasNextPage=True, nextPageUrl="https://allegro.pl/listing?p=2")
+    assert sr.page == 1
+    assert sr.hasNextPage is True
+    assert sr.nextPageUrl == "https://allegro.pl/listing?p=2"
+
+
+def test_search_result_no_next():
+    sr = SearchResult(offers=[], page=3, hasNextPage=False)
+    assert sr.hasNextPage is False
+    assert sr.nextPageUrl is None

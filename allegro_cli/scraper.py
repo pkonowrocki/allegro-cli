@@ -7,11 +7,13 @@ from bs4 import BeautifulSoup, Tag
 
 from allegro_cli.api.models import (
     Category,
+    DeliveryInfo,
     Image,
     Offer,
     Price,
     Seller,
     SellingMode,
+    Stock,
 )
 
 
@@ -160,13 +162,16 @@ def _try_extract_json_offers(html: str) -> list[Offer] | None:
             else:
                 amount = str(price_data) if price_data else ""
 
+            # URL
+            url = item.get("url", "")
+
             # Image
             images_raw = item.get("images", []) or item.get("photos", [])
             images = []
             for img in images_raw:
-                url = img.get("url", "") if isinstance(img, dict) else str(img)
-                if url:
-                    images.append(Image(url=url))
+                img_url = img.get("url", "") if isinstance(img, dict) else str(img)
+                if img_url:
+                    images.append(Image(url=img_url))
 
             # Seller
             seller_data = item.get("seller", {})
@@ -176,17 +181,46 @@ def _try_extract_json_offers(html: str) -> list[Offer] | None:
                 seller_id = str(seller_data.get("id", ""))
                 seller_name = seller_data.get("login", seller_data.get("name", ""))
 
+            # Selling mode
+            selling_format = item.get("sellingMode", {}).get("format", "BUY_NOW") if isinstance(item.get("sellingMode"), dict) else "BUY_NOW"
+            popularity = item.get("popularity")
+            if popularity is not None:
+                popularity = int(popularity)
+
+            # Delivery
+            delivery = None
+            delivery_data = item.get("delivery")
+            if isinstance(delivery_data, dict):
+                lp = delivery_data.get("lowestPrice", {})
+                delivery = DeliveryInfo(
+                    lowestPrice=Price(amount=str(lp.get("amount", "")), currency=lp.get("currency", "PLN")) if isinstance(lp, dict) and lp.get("amount") else None,
+                    availableForFree=delivery_data.get("availableForFree", False),
+                )
+
+            # Stock
+            stock = None
+            stock_data = item.get("stock")
+            if isinstance(stock_data, dict):
+                stock = Stock(
+                    unit=stock_data.get("unit", "UNIT"),
+                    available=int(stock_data.get("available", 0)),
+                )
+
             offers.append(
                 Offer(
                     id=offer_id,
                     name=name,
+                    url=url,
                     seller=Seller(id=seller_id, name=seller_name),
                     sellingMode=SellingMode(
-                        format="BUY_NOW",
+                        format=selling_format,
                         price=Price(amount=amount, currency="PLN"),
+                        popularity=popularity,
                     ),
                     category=Category(id=""),
                     images=images,
+                    delivery=delivery,
+                    stock=stock,
                 )
             )
         except Exception:
@@ -220,11 +254,20 @@ def parse_search_results(html: str) -> list[Offer]:
             price_amount = _extract_price(article)
             image_url = _extract_image(article)
 
+            # Seller from DOM (best-effort)
+            seller_id = ""
+            seller_name = ""
+            seller_link = article.find("a", href=re.compile(r"/uzytkownik/"))
+            if seller_link:
+                seller_name = seller_link.get_text(strip=True)
+            # ponytail: HTML seller extraction is best-effort, blank if not found
+
             offers.append(
                 Offer(
                     id=offer_id or "",
                     name=title,
-                    seller=Seller(id="", name=""),
+                    url=url,
+                    seller=Seller(id=seller_id, name=seller_name),
                     sellingMode=SellingMode(
                         format="BUY_NOW",
                         price=Price(amount=price_amount, currency="PLN"),
@@ -514,6 +557,10 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
         if canonical and canonical.get("href"):
             offer_id = _extract_offer_id(canonical["href"]) or ""
 
+    # URL — from canonical link or construct from offer_id
+    canonical = soup.find("link", rel="canonical")
+    offer_url = canonical["href"] if canonical and canonical.get("href") else (f"https://allegro.pl/oferta/-{offer_id}" if offer_id else "")
+
     # Price — meta tag is most reliable on offer pages
     price_amount = ""
     meta_price = soup.find("meta", property="product:price:amount")
@@ -566,6 +613,7 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
     return Offer(
         id=offer_id,
         name=title,
+        url=offer_url,
         seller=Seller(id=seller_id, name=seller_name),
         sellingMode=SellingMode(
             format="BUY_NOW",

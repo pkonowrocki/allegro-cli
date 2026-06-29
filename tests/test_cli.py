@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from allegro_cli.main import create_parser, main
 from allegro_cli.api.models import (
-    Offer, Seller, SellingMode, Price, Category,
+    Offer, Seller, SellingMode, Price, Category, SearchResult,
 )
 
 
@@ -158,6 +158,31 @@ def test_parser_cart_add():
     assert args.quantity == 2
 
 
+def test_parser_search_free_shipping():
+    parser = create_parser()
+    args = parser.parse_args(["search", "laptop", "--free-shipping"])
+    assert args.free_shipping is True
+    assert args.smart is False  # separate flag, logic merges them
+
+
+def test_parser_search_smart():
+    parser = create_parser()
+    args = parser.parse_args(["search", "laptop", "--smart"])
+    assert args.smart is True
+
+
+def test_parser_skill():
+    parser = create_parser()
+    args = parser.parse_args(["skill"])
+    assert args.command == "skill"
+
+
+def test_parser_skill_target_dir():
+    parser = create_parser()
+    args = parser.parse_args(["skill", "--target-dir", "/tmp/skills"])
+    assert args.target_dir == "/tmp/skills"
+
+
 def test_parser_packages():
     parser = create_parser()
     args = parser.parse_args(["packages"])
@@ -166,7 +191,9 @@ def test_parser_packages():
 
 def test_search_command_outputs_json(capsys):
     mock_client = MagicMock()
-    mock_client.scrape_search.return_value = [_make_offer()]
+    mock_client.scrape_search.return_value = SearchResult(
+        offers=[_make_offer()], page=1, hasNextPage=False,
+    )
 
     with (
         patch("allegro_cli.main.load_config") as mock_load,
@@ -178,16 +205,18 @@ def test_search_command_outputs_json(capsys):
             cookies="session=x",
             edgeBaseUrl="https://edge.allegro.pl",
             outputFormat="text",
-            flareSolverrUrl=None,
+            cloakLicenseKey=None,
         )
         result = main()
 
     assert result == 0
     captured = capsys.readouterr()
     data = json.loads(captured.out)
-    assert isinstance(data, list)
-    assert len(data) == 1
-    assert data[0]["name"] == "Test Offer"
+    assert isinstance(data, dict)
+    assert "offers" in data
+    assert len(data["offers"]) == 1
+    assert data["offers"][0]["name"] == "Test Offer"
+    assert data["page"] == 1
 
 
 def test_config_show_masks_cookies(capsys):

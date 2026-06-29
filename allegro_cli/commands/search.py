@@ -21,12 +21,13 @@ def _compact_offer(offer) -> dict:
         "name": offer.name,
         "price": offer.sellingMode.price.amount,
         "seller": offer.seller.name,
-        "image": offer.images[0].url if offer.images else None,
+        "url": offer.url,
+        "smart": offer.delivery.availableForFree if offer.delivery else False,
     }
 
 
 def handle_search(args, client: AllegroClient) -> int:
-    offers = client.scrape_search(
+    result = client.scrape_search(
         phrase=args.phrase,
         page=getattr(args, "page", 1),
         category=getattr(args, "category", None),
@@ -35,7 +36,7 @@ def handle_search(args, client: AllegroClient) -> int:
         price_max=getattr(args, "price_max", None),
         seller=getattr(args, "seller", None),
         condition=getattr(args, "condition", None),
-        smart=getattr(args, "smart", False),
+        smart=getattr(args, "smart", False) or getattr(args, "free_shipping", False),
         delivery_time=getattr(args, "delivery_time", None),
         location=getattr(args, "location", None),
         pay=getattr(args, "pay", False),
@@ -43,12 +44,22 @@ def handle_search(args, client: AllegroClient) -> int:
     )
 
     if args.format == "json":
-        data = [dataclasses.asdict(o) for o in offers]
         if getattr(args, "compact", False):
-            data = [_compact_offer(o) for o in offers]
+            data = {
+                "offers": [_compact_offer(o) for o in result.offers],
+                "page": result.page,
+                "hasNextPage": result.hasNextPage,
+            }
+        else:
+            data = {
+                "offers": [dataclasses.asdict(o) for o in result.offers],
+                "page": result.page,
+                "hasNextPage": result.hasNextPage,
+                "nextPageUrl": result.nextPageUrl,
+            }
         output_json(data)
     else:
-        rows = [dataclasses.asdict(o) for o in offers]
+        rows = [dataclasses.asdict(o) for o in result.offers]
         columns = _get_columns(args)
         if args.format == "tsv":
             output_tsv(rows, columns=columns)
@@ -61,7 +72,18 @@ def handle_offer(args, client: AllegroClient) -> int:
     offer = client.scrape_offer(args.offer_id)
 
     if args.format == "json":
-        output_json(offer)
+        if getattr(args, "compact", False):
+            output_json({
+                "id": offer.id,
+                "name": offer.name,
+                "price": offer.sellingMode.price.amount,
+                "seller": offer.seller.name,
+                "url": offer.url,
+                "smart": offer.delivery.availableForFree if offer.delivery else False,
+                "parameters": offer.parameters,
+            })
+        else:
+            output_json(offer)
     else:
         rows = [dataclasses.asdict(offer)]
         columns = _get_columns(args)

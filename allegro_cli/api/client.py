@@ -5,7 +5,7 @@ import time
 from urllib.parse import urlencode
 
 import httpx
-from curl_cffi.requests import Session as CffiSession
+from cloakbrowser import launch
 
 from allegro_cli.api.models import (
     AllegroCliError,
@@ -15,6 +15,7 @@ from allegro_cli.api.models import (
     ScraperError,
     CartError,
     Offer,
+    SearchResult,
 )
 from allegro_cli.config import Config
 
@@ -27,11 +28,6 @@ _COMMON_HEADERS = {
     "sec-fetch-mode": "cors",
     "sec-fetch-site": "same-site",
     "accept-language": "pl-PL",
-    "user-agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
 }
 
 
@@ -42,16 +38,44 @@ class AllegroClient:
 
         # Edge client for cart/packages — only when cookies are present
         self._edge: httpx.Client | None = None
-        self._web: CffiSession | None = None
+        self._browser = None  # ponytail: single browser per invocation, closed on last use
+        self._page = None
         if config.cookies:
             self._edge = httpx.Client(
                 base_url=config.edgeBaseUrl,
                 headers={**_COMMON_HEADERS, "cookie": config.cookies},
                 timeout=30.0,
             )
-            # curl_cffi session — impersonates Chrome TLS fingerprint to pass Cloudflare
-            self._web = CffiSession(impersonate="chrome")
-            self._web.headers.update({"cookie": config.cookies})
+
+    def _ensure_browser(self):
+        if self._page:
+            return self._page
+        if not self._config.cookies:
+            raise AuthenticationError(
+                "No cookies configured. Scrape requires browser cookies.\n"
+                "Run: allegro login"
+            )
+        kwargs: dict = {"headless": True, "locale": "pl-PL"}
+        if self._config.cloakLicenseKey:
+            kwargs["license_key"] = self._config.cloakLicenseKey
+        self._browser = launch(**kwargs)
+        context = self._browser.new_context()
+        # Inject cookies into the browser context
+        cookies = []
+        for pair in self._config.cookies.split(";"):
+            pair = pair.strip()
+            if "=" not in pair:
+                continue
+            name, _, value = pair.partition("=")
+            cookies.append({
+                "name": name.strip(),
+                "value": value.strip(),
+                "domain": ".allegro.pl",
+                "path": "/",
+            })
+        context.add_cookies(cookies)
+        self._page = context.new_page()
+        return self._page
 
     # --- Scrape (allegro.pl, cookie auth) ---
 
@@ -70,14 +94,14 @@ class AllegroClient:
         location: str | None = None,
         pay: bool = False,
         filters: list[str] | None = None,
-    ) -> list[Offer]:
+    ) -> SearchResult:
         if not self._config.cookies:
             raise AuthenticationError(
                 "No cookies configured. Scrape requires browser cookies.\n"
                 "Run: allegro login"
             )
 
-        from allegro_cli.scraper import parse_search_results
+        from allegro_cli.scraper import parse_next_page_url, parse_search_results
 
         if seller:
             base_url = f"https://allegro.pl/uzytkownik/{seller}"
@@ -120,7 +144,14 @@ class AllegroClient:
         full_url = base_url + "?" + urlencode(params)
 
         html = self._fetch_page(full_url)
-        return parse_search_results(html)
+        offers = parse_search_results(html)
+        next_page_url = parse_next_page_url(html)
+        return SearchResult(
+            offers=offers,
+            page=page,
+            hasNextPage=next_page_url is not None,
+            nextPageUrl=next_page_url,
+        )
 
     def scrape_offer(self, offer_id: str) -> Offer:
         """Fetch and parse a single offer page by ID."""
@@ -140,11 +171,11 @@ class AllegroClient:
             if e.code == "NotFoundException":
                 raise OfferNotFoundError(offer_id)
             raise e
-            
+
         offer = parse_offer_page(html, offer_id=offer_id)
         if not offer:
             raise OfferNotFoundError(offer_id)
- 
+
         # If we only got a few params, try lazy loading the rest
         if len(offer.parameters) < 15:
             contexts = extract_lazy_contexts(html)
@@ -152,7 +183,7 @@ class AllegroClient:
                 lazy_params = self._fetch_lazy_parameters(url, contexts)
                 for k, v in lazy_params.items():
                     offer.parameters.setdefault(k, v)
- 
+
         return offer
 
     def _fetch_lazy_parameters(
@@ -163,20 +194,20 @@ class AllegroClient:
 
         result: dict[str, str] = {}
         max_requests = 3
+        page = self._ensure_browser()
         for ctx in contexts[:max_requests]:
             lazy_url = f"{offer_url}?lazyContext={ctx['value']}"
             self._log(f"GET {lazy_url} (lazy params)")
             try:
-                resp = self._web.get(
+                resp = page.request.get(
                     lazy_url,
                     headers={
                         "Accept": "application/vnd.opbox-web.subtree+json",
                     },
-                    timeout=15,
                 )
             except Exception:
                 continue
-            if resp.status_code != 200:
+            if resp.status != 200:
                 continue
             try:
                 data = resp.json()
@@ -190,44 +221,37 @@ class AllegroClient:
         return result
 
     def _fetch_page(self, url: str) -> str:
-        # Try direct curl_cffi first
-        if self._web:
-            self._log(f"GET {url} (direct)")
-            t0 = time.monotonic()
-            resp = self._web.get(url, timeout=30)
-            elapsed = time.monotonic() - t0
-            self._log(f"Response: {resp.status_code} ({elapsed:.1f}s)")
- 
-            if resp.status_code == 200:
-                return resp.text
- 
-            if resp.status_code == 401:
-                raise AuthenticationError("Session expired (401). Run: allegro login")
- 
-            if resp.status_code == 403:
-                raise RateLimitError(
-                    message="Forbidden (403) - DataDome challenge",
-                    userMessage="Access denied by Allegro's anti-bot system. Please refresh your cookies using 'allegro login'.",
-                )
- 
-            if resp.status_code == 404:
-                # We don't know the ID here, but the caller can wrap this
-                raise AllegroCliError(
-                    message=f"Page not found (404): {url}",
-                    code="NotFoundException",
-                    userMessage="The requested page was not found.",
-                )
- 
-            raise AllegroCliError(
-                message=f"Scrape returned {resp.status_code}: {resp.text[:300]}",
-                code="ScrapeException",
-                userMessage=f"Could not fetch search page ({resp.status_code}).",
+        page = self._ensure_browser()
+        self._log(f"GET {url} (CloakBrowser)")
+        t0 = time.monotonic()
+        resp = page.goto(url, wait_until="domcontentloaded")
+        elapsed = time.monotonic() - t0
+        status = resp.status if resp else 0
+        self._log(f"Response: {status} ({elapsed:.1f}s)")
+
+        if status == 200:
+            return page.content()
+
+        if status == 401:
+            raise AuthenticationError("Session expired (401). Run: allegro login")
+
+        if status == 403:
+            raise RateLimitError(
+                message="Forbidden (403) - DataDome challenge",
+                userMessage="Access denied by Allegro's anti-bot system. Please refresh your cookies using 'allegro login'.",
             )
-        
+
+        if status == 404:
+            raise AllegroCliError(
+                message=f"Page not found (404): {url}",
+                code="NotFoundException",
+                userMessage="The requested page was not found.",
+            )
+
         raise AllegroCliError(
-            message="Web client not initialized",
-            code="ClientError",
-            userMessage="Internal error: Web client is not available.",
+            message=f"Scrape returned {status}: {url}",
+            code="ScrapeException",
+            userMessage=f"Could not fetch search page ({status}).",
         )
 
     # --- Cart (edge.allegro.pl, cookie auth) ---
@@ -314,7 +338,7 @@ class AllegroClient:
         headers = {"accept": accept}
         if content_type:
             headers["content-type"] = content_type
- 
+
         resp = edge.request(method, path, headers=headers, **kwargs)
         if self._verbose:
             print(f"DEBUG: {method} {path} -> {resp.status_code}")
@@ -344,3 +368,15 @@ class AllegroClient:
         if self._verbose:
             import sys
             print(msg, file=sys.stderr, flush=True)
+
+    def close(self):
+        if self._browser:
+            self._browser.close()
+            self._browser = None
+            self._page = None
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass

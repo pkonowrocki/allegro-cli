@@ -78,7 +78,11 @@ def create_parser() -> argparse.ArgumentParser:
     )
     sp_search.add_argument(
         "--smart", action="store_true", default=False,
-        help="Filter for Allegro Smart offers",
+        help="Filter for Allegro Smart offers (free delivery)",
+    )
+    sp_search.add_argument(
+        "--free-shipping", action="store_true", default=False,
+        help="Alias for --smart",
     )
     sp_search.add_argument(
         "--delivery-time", choices=["one_day", "two_day", "three_day"], default=None,
@@ -135,6 +139,13 @@ def create_parser() -> argparse.ArgumentParser:
     # --- login ---
     sub.add_parser("login", parents=[common], help="Import browser cookies (paste from Chrome DevTools)")
 
+    # --- skill ---
+    sp_skill = sub.add_parser("skill", parents=[common], help="Install CLI as Claude Code skill")
+    sp_skill.add_argument(
+        "--target-dir", default=None,
+        help="Target directory (default: ~/.claude/skills)",
+    )
+
     # --- config ---
     sp_config = sub.add_parser("config", parents=[common], help="Manage configuration")
     config_sub = sp_config.add_subparsers(dest="config_action", required=True)
@@ -146,8 +157,8 @@ def create_parser() -> argparse.ArgumentParser:
     sp_set.add_argument("--edge-base-url", dest="edge_base_url")
     sp_set.add_argument("--output-format", dest="output_format", choices=["text", "json", "tsv"])
     sp_set.add_argument(
-        "--flaresolverr-url", dest="flaresolverr_url",
-        help="FlareSolverr URL (e.g. http://localhost:8191/v1)",
+        "--cloak-license-key", dest="cloak_license_key",
+        help="CloakBrowser Pro license key (optional, free tier used if not set)",
     )
 
     return parser
@@ -165,6 +176,10 @@ def main() -> int:
         if args.command == "login":
             from allegro_cli.commands.login import handle_login
             return handle_login(args)
+
+        if args.command == "skill":
+            from allegro_cli.commands.skill_cmd import handle_skill
+            return handle_skill(args)
 
         if args.command == "config":
             from allegro_cli.commands.config_cmd import (

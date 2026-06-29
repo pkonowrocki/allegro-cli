@@ -16,7 +16,7 @@
 - **🎨 Rich UX**: Beautifully formatted, color-coded tables for humans.
 - **🔍 Advanced Filtering**: Precision search with filters for condition, free shipping, Allegro Smart, and delivery speed.
 - **📦 Full Tracking**: Detailed package tracking beyond simple summaries.
-- **🛡️ Bot Bypass**: Integrated TLS fingerprinting via `curl_cffi` to transparently handle anti-bot protections (DataDome) without external dependencies.
+- **🛡️ Bot Bypass**: CloakBrowser (source-patched Chromium) defeats DataDome/Cloudflare with 58+ C++ fingerprint patches — no external solver needed.
 - **🛠️ Extensible**: Pure Python implementation, easy to integrate into larger automation pipelines.
 
 ---
@@ -78,7 +78,7 @@ allegro search "iphone" --pay
 | `--sort` | `p` (price ↑), `pd` (price ↓), `m` (relevance), `n` (newest) | `--sort pd` |
 | `--condition` | Product condition (can specify multiple) | `--condition new`, `--condition new used` |
 | `--smart` | Filter for Allegro Smart | `--smart` |
-| `--free-shipping`| Only free delivery | `--free-shipping` |
+| `--free-shipping`| Alias for `--smart` (Allegro Smart) | `--free-shipping` |
 | `--delivery-time`| Delivery speed | `one_day`, `two_day`, `three_day` |
 | `--price-min` | Minimum price in PLN | `--price-min 100` |
 | `--price-max` | Maximum price in PLN | `--price-max 500` |
@@ -110,14 +110,34 @@ allegro cart remove OFFER_ID           # Remove item from cart
 allegro packages            # List all active shipments with detailed status
 ```
 
+**Claude Code Skill:**
+```bash
+allegro skill               # Install as a Claude Code skill (auto-discovered by agents)
+```
+
 ---
 
 ## 🤖 For AI Agents (LLM Optimization)
 
-If you are building an AI agent, use the `--format json` and `--compact` flags. The compact mode strips unnecessary metadata to save tokens while keeping all critical data points.
+If you are building an AI agent, use the `--format json` and `--compact` flags. The compact mode strips unnecessary metadata to save tokens while keeping all critical data points — including the `smart` field that indicates Allegro Smart eligibility (free delivery).
 
 ```bash
 allegro search "mechanical keyboard" --format json --compact
+```
+
+**Compact search output** includes: `id`, `name`, `price`, `seller`, `url`, `smart`
+**Compact offer output** includes: `id`, `name`, `price`, `seller`, `url`, `smart`, `parameters`
+
+### Allegro Smart
+
+Allegro Smart! is a subscription (59.90 PLN/yr) giving unlimited free delivery on eligible offers above 49.90 PLN. The `smart` field in compact output shows whether an offer qualifies. Use `--smart` or `--free-shipping` to filter for Smart-eligible offers.
+
+### Install as a Claude Code Skill
+
+To auto-register the CLI as a Claude Code skill (so AI agents discover it automatically):
+
+```bash
+allegro skill
 ```
 
 ---

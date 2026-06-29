@@ -13,7 +13,7 @@ class Config:
     cookies: str | None = None
     edgeBaseUrl: str = "https://edge.allegro.pl"
     outputFormat: str = "text"
-    flareSolverrUrl: str | None = None
+    cloakLicenseKey: str | None = None
 
 
 def ensure_dirs() -> None:
@@ -29,7 +29,7 @@ def load_config(path: Path | None = None) -> Config:
         cookies=data.get("cookies"),
         edgeBaseUrl=data.get("edgeBaseUrl", Config.edgeBaseUrl),
         outputFormat=data.get("outputFormat", Config.outputFormat),
-        flareSolverrUrl=data.get("flareSolverrUrl"),
+        cloakLicenseKey=data.get("cloakLicenseKey"),
     )
 
 

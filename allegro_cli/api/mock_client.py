@@ -27,6 +27,10 @@ class MockAllegroClient(AllegroClient):
         super().__init__(config)
         self.fixtures_path = Path(fixtures_path)
 
+    def _ensure_browser(self):
+        # No real browser in tests
+        return None
+
     def _request(
         self,
         method: str,
@@ -47,7 +51,7 @@ class MockAllegroClient(AllegroClient):
 
         with open(fixture_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        
+
         return MockResponse(
             status_code=data.get("status_code", 200),
             text=json.dumps(data.get("body", {}), ensure_ascii=False),
@@ -59,7 +63,15 @@ class MockAllegroClient(AllegroClient):
         from urllib.parse import urlparse
         parsed = urlparse(url)
         path = parsed.path
-        
+
         # We use the same fixture logic as _request
         resp = self._request("GET", path)
         return resp.text
+
+    def _fetch_lazy_parameters(self, offer_url, contexts):
+        # No lazy loading in mock mode
+        return {}
+
+    def close(self):
+        # No browser to close
+        pass

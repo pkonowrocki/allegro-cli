@@ -54,10 +54,19 @@ class Offer:
     seller: Seller
     sellingMode: SellingMode
     category: Category
+    url: str = ""
     images: list[Image] = field(default_factory=list)
     delivery: DeliveryInfo | None = None
     stock: Stock | None = None
     parameters: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class SearchResult:
+    offers: list[Offer]
+    page: int
+    hasNextPage: bool
+    nextPageUrl: str | None = None
 
 
 # --- Exceptions ---
