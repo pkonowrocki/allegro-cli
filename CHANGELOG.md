@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.0 (2026-06-29)
+
+### Feat
+
+- enrich search/offer data, add Allegro Smart UX, skill command
+
 ## v0.6.0 (2026-06-08)
 
 ### Feat
