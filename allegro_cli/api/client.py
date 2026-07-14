@@ -59,7 +59,7 @@ class AllegroClient:
         if self._config.cloakLicenseKey:
             kwargs["license_key"] = self._config.cloakLicenseKey
         self._browser = launch(**kwargs)
-        context = self._browser.new_context()
+        context = self._browser.new_context(locale="pl-PL")
         # Inject cookies into the browser context
         cookies = []
         for pair in self._config.cookies.split(";"):
