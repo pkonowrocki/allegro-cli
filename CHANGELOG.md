@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.7.1 (2026-07-14)
+
+### Fix
+
+- align Accept-Language with binary locale in browser context
+- harden client resource cleanup and security
+
+### Refactor
+
+- apply ponytail audit — remove dead code and over-engineering
+
 ## v0.7.0 (2026-06-29)
 
 ### Feat
