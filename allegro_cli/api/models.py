@@ -69,6 +69,30 @@ class SearchResult:
     nextPageUrl: str | None = None
 
 
+@dataclass
+class OrderOffer:
+    id: str
+    title: str
+    unitPrice: str        # e.g. "99.99 PLN"
+    quantity: int
+    imageUrl: str | None
+    traits: list[str]     # e.g. ["CAN_BUY_AGAIN"]
+
+
+@dataclass
+class Order:
+    id: str               # purchaseId — stable, human-visible
+    seller: str           # seller.login
+    sellerId: str         # seller.id — required for reorder cart call
+    offers: list[OrderOffer]
+    status: str           # status.primary: SENT/DELIVERED/RETURNED/...
+    totalCost: str        # e.g. "199.98 PLN"
+    waybill: str | None   # waybillsData[0].waybillNumber or None
+    orderDate: str        # first offer.orderDate
+    canReorder: bool      # any offer has "CAN_BUY_AGAIN" in traits
+    returnStatus: str | None  # "RETURNED" / "RETURN_IN_PROGRESS" / None
+
+
 # --- Exceptions ---
 
 class AllegroCliError(Exception):
@@ -129,6 +153,24 @@ class CartError(AllegroCliError):
             message=message,
             code=code,
             userMessage=f"Shopping cart error: {message}",
+        )
+
+
+class OrderNotFoundException(AllegroCliError):
+    def __init__(self, order_id: str):
+        super().__init__(
+            message=f"Order {order_id} not found",
+            code="OrderNotFoundException",
+            userMessage=f"Order {order_id} was not found in recent orders.",
+        )
+
+
+class CannotReorderException(AllegroCliError):
+    def __init__(self, order_id: str):
+        super().__init__(
+            message=f"No reorderable items in order {order_id}",
+            code="CannotReorderException",
+            userMessage=f"None of the items in order {order_id} can be reordered (CAN_BUY_AGAIN trait missing).",
         )
 
 
