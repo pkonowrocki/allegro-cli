@@ -1,0 +1,202 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1784053719.283647,
+    "ast_hash": "4511579f72387f4bc2b63015d16bd637",
+    "semantic_hash": "4511579f72387f4bc2b63015d16bd637"
+  },
+  "agent_specs/tools.json": {
+    "mtime": 1782585475.2907224,
+    "ast_hash": "e8bf2d3caed6878146d12aa5ee781de2",
+    "semantic_hash": "e8bf2d3caed6878146d12aa5ee781de2"
+  },
+  "allegro_cli/__init__.py": {
+    "mtime": 1784050067.8716567,
+    "ast_hash": "4c078b5da30cc125e538572b994aaf93",
+    "semantic_hash": "4c078b5da30cc125e538572b994aaf93"
+  },
+  "allegro_cli/api/__init__.py": {
+    "mtime": 1782585475.2907224,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "allegro_cli/api/client.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "d6ec52d043949993798831efac2bf70e",
+    "semantic_hash": "d6ec52d043949993798831efac2bf70e"
+  },
+  "allegro_cli/api/mock_client.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "cd4a3087ce56ca010deb48602a439461",
+    "semantic_hash": "cd4a3087ce56ca010deb48602a439461"
+  },
+  "allegro_cli/api/models.py": {
+    "mtime": 1782659611.140264,
+    "ast_hash": "7f05d47fcde0d03dd6d227371f2acbab",
+    "semantic_hash": "7f05d47fcde0d03dd6d227371f2acbab"
+  },
+  "allegro_cli/commands/__init__.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "f0bc4c21caf3936820a580ecc74c3556",
+    "semantic_hash": "f0bc4c21caf3936820a580ecc74c3556"
+  },
+  "allegro_cli/commands/cart.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "5a9931dbe5ed6b30dc758b516115e0af",
+    "semantic_hash": "5a9931dbe5ed6b30dc758b516115e0af"
+  },
+  "allegro_cli/commands/config_cmd.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "8a60330996752b57744401fa42d84169",
+    "semantic_hash": "8a60330996752b57744401fa42d84169"
+  },
+  "allegro_cli/commands/login.py": {
+    "mtime": 1782585475.2987223,
+    "ast_hash": "67abf9eb4f9653a3341684b97e931e8f",
+    "semantic_hash": "67abf9eb4f9653a3341684b97e931e8f"
+  },
+  "allegro_cli/commands/packages.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "cc8d23eab41603ff85181dbf97c64732",
+    "semantic_hash": "cc8d23eab41603ff85181dbf97c64732"
+  },
+  "allegro_cli/commands/search.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "3f2ebe9b47aae5d2f37be49504836e39",
+    "semantic_hash": "3f2ebe9b47aae5d2f37be49504836e39"
+  },
+  "allegro_cli/commands/skill_cmd.py": {
+    "mtime": 1782721629.6650732,
+    "ast_hash": "d88940d2cd1f5778a7aee95fa658500b",
+    "semantic_hash": "d88940d2cd1f5778a7aee95fa658500b"
+  },
+  "allegro_cli/config.py": {
+    "mtime": 1784050067.8756566,
+    "ast_hash": "eab6422ac9f3e6ef51832896b6a54fae",
+    "semantic_hash": "eab6422ac9f3e6ef51832896b6a54fae"
+  },
+  "allegro_cli/cookie_import.py": {
+    "mtime": 1782585475.3027225,
+    "ast_hash": "37936b1669ae23497cd2e00232b20384",
+    "semantic_hash": "37936b1669ae23497cd2e00232b20384"
+  },
+  "allegro_cli/main.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "fbb6fe2e6d254c191d525a635e6db272",
+    "semantic_hash": "fbb6fe2e6d254c191d525a635e6db272"
+  },
+  "allegro_cli/output.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "20adf53187d22833c053a2050910bfca",
+    "semantic_hash": "20adf53187d22833c053a2050910bfca"
+  },
+  "allegro_cli/scraper.py": {
+    "mtime": 1784050067.8876567,
+    "ast_hash": "0d21826f0c6396215334781b0b4982f7",
+    "semantic_hash": "0d21826f0c6396215334781b0b4982f7"
+  },
+  "pyproject.toml": {
+    "mtime": 1784050067.8716567,
+    "ast_hash": "47302da01c24db83993b85546db78517",
+    "semantic_hash": "47302da01c24db83993b85546db78517"
+  },
+  "tests/__init__.py": {
+    "mtime": 1782585475.3067224,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "tests/fixtures/get_carts.json": {
+    "mtime": 1782585475.3067224,
+    "ast_hash": "4a975fe0f73b963ac0080d5d7b42b975",
+    "semantic_hash": "4a975fe0f73b963ac0080d5d7b42b975"
+  },
+  "tests/fixtures/get_packages.json": {
+    "mtime": 1782585475.3067224,
+    "ast_hash": "6c011f02a7a207c17d8cba08a93c43d5",
+    "semantic_hash": "6c011f02a7a207c17d8cba08a93c43d5"
+  },
+  "tests/fixtures/get_packages_summary.json": {
+    "mtime": 1782585475.3067224,
+    "ast_hash": "9044a14be947e9e8b8d8c15fbe792a21",
+    "semantic_hash": "9044a14be947e9e8b8d8c15fbe792a21"
+  },
+  "tests/test_cli.py": {
+    "mtime": 1782721755.48118,
+    "ast_hash": "16f1a49df1d977706167c56dc8531b23",
+    "semantic_hash": "16f1a49df1d977706167c56dc8531b23"
+  },
+  "tests/test_config.py": {
+    "mtime": 1782654154.493051,
+    "ast_hash": "ed218b645073eede9eda1ffe0aacc484",
+    "semantic_hash": "ed218b645073eede9eda1ffe0aacc484"
+  },
+  "tests/test_e2e.py": {
+    "mtime": 1782721769.0611913,
+    "ast_hash": "b2e928eac3b65c456138a1517bdbd85b",
+    "semantic_hash": "b2e928eac3b65c456138a1517bdbd85b"
+  },
+  "tests/test_mock_client.py": {
+    "mtime": 1782585475.3147223,
+    "ast_hash": "916554bb9362cea2e03a287d4e0a559d",
+    "semantic_hash": "916554bb9362cea2e03a287d4e0a559d"
+  },
+  "tests/test_scraper.py": {
+    "mtime": 1782660209.4605403,
+    "ast_hash": "84c2cc90af7bc14244216f496414d076",
+    "semantic_hash": "84c2cc90af7bc14244216f496414d076"
+  },
+  ".github/workflows/bump.yml": {
+    "mtime": 1782585475.2867224,
+    "ast_hash": "c8f992bfb3117902c28461c8b8cb5448",
+    "semantic_hash": "c8f992bfb3117902c28461c8b8cb5448"
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1782585475.2867224,
+    "ast_hash": "fe469c47f049156140858b2ce76596bc",
+    "semantic_hash": "fe469c47f049156140858b2ce76596bc"
+  },
+  "AI_INTEGRATION.md": {
+    "mtime": 1782585475.2867224,
+    "ast_hash": "bb1fae31dddf709600e6fb806fdf60af",
+    "semantic_hash": "bb1fae31dddf709600e6fb806fdf60af"
+  },
+  "CHANGELOG.md": {
+    "mtime": 1784050067.8716567,
+    "ast_hash": "dbd1550470613df832a6994a3d12f20d",
+    "semantic_hash": "dbd1550470613df832a6994a3d12f20d"
+  },
+  "CLAUDE.md": {
+    "mtime": 1782653968.8088825,
+    "ast_hash": "4f2a5f628f878458062f9707aa7398ac",
+    "semantic_hash": "4f2a5f628f878458062f9707aa7398ac"
+  },
+  "CONTRIBUTING.md": {
+    "mtime": 1782585475.2907224,
+    "ast_hash": "c583842bb481bc5086766dcfd100a6db",
+    "semantic_hash": "c583842bb481bc5086766dcfd100a6db"
+  },
+  "README.md": {
+    "mtime": 1782722347.1376963,
+    "ast_hash": "21abb218d1f621d1f21670b71f162f06",
+    "semantic_hash": "21abb218d1f621d1f21670b71f162f06"
+  },
+  "skills/allegro-cli/SKILL.md": {
+    "mtime": 1782721685.9331214,
+    "ast_hash": "fb7cb6541b2dc1295cef75afb5b1c0d8",
+    "semantic_hash": "fb7cb6541b2dc1295cef75afb5b1c0d8"
+  },
+  "tests/fixtures/offer_page.html": {
+    "mtime": 1782585475.3107224,
+    "ast_hash": "9ad09a2a2d6b7f4ae7bb36cc04472917",
+    "semantic_hash": "9ad09a2a2d6b7f4ae7bb36cc04472917"
+  },
+  "tests/fixtures/search_empty.html": {
+    "mtime": 1782585475.3107224,
+    "ast_hash": "728e37ce0a41ee7917e86ab65ac3da80",
+    "semantic_hash": "728e37ce0a41ee7917e86ab65ac3da80"
+  },
+  "tests/fixtures/search_results.html": {
+    "mtime": 1782659872.3763747,
+    "ast_hash": "5e98753370125ce9f008d8fa791d7a22",
+    "semantic_hash": "5e98753370125ce9f008d8fa791d7a22"
+  }
+}

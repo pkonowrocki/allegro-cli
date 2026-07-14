@@ -79,9 +79,35 @@
             "status": {"primary": "RETURNED", "actions": []}
           }
         ]
+      },
+      {
+        "groupId": "group-4",
+        "myorders": [
+          {
+            "id": "order-return-in-progress-4",
+            "seller": {"id": "seller-400", "login": "shopxyz"},
+            "offers": [
+              {
+                "id": "offer-ddd",
+                "title": "USB-C Cable",
+                "unitPrice": "49.00 PLN",
+                "quantity": 1,
+                "imageUrl": null,
+                "orderDate": "2026-06-05T14:00:00Z",
+                "traits": []
+              }
+            ],
+            "delivery": {
+              "status": "RETURN_IN_PROGRESS",
+              "waybillsData": []
+            },
+            "totalCost": {"amount": "49.00", "currency": "PLN"},
+            "status": {"primary": "RETURN_IN_PROGRESS", "actions": []}
+          }
+        ]
       }
     ],
-    "total": 3,
+    "total": 4,
     "offset": 0
   }
 }

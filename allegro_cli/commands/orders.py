@@ -128,5 +128,31 @@ def handle_orders_reorder(args, client: AllegroClient) -> int:
 
 
 def handle_orders_returns(args, client: AllegroClient) -> int:
-    args.status = "RETURNED"
-    return handle_orders_list(args, client)
+    offset = (args.page - 1) * args.limit
+    raw = client.get_orders(offset=offset, limit=args.limit)
+    orders = [
+        _parse_order(myorder)
+        for group in raw.get("orderGroups", [])
+        for myorder in group.get("myorders", [])
+    ]
+    orders = [o for o in orders if o.status in {"RETURNED", "RETURN_IN_PROGRESS"}]
+
+    if args.format == "json":
+        if args.compact:
+            output_json({"orders": [_compact_order(o) for o in orders]})
+        else:
+            output_json({
+                "orders": [dataclasses.asdict(o) for o in orders],
+                "total": raw.get("total", len(orders)),
+            })
+    elif args.format == "tsv":
+        output_tsv(
+            [dataclasses.asdict(o) for o in orders],
+            columns=["id", "seller", "status", "totalCost", "waybill"],
+        )
+    else:
+        output_text(
+            [dataclasses.asdict(o) for o in orders],
+            columns=["id", "seller", "status", "totalCost", "waybill"],
+        )
+    return 0

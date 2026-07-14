@@ -57,8 +57,8 @@ def test_get_orders_returns_dict():
     result = client.get_orders()
     assert isinstance(result, dict)
     assert "orderGroups" in result
-    assert result["total"] == 3
-    assert len(result["orderGroups"]) == 3
+    assert result["total"] == 4
+    assert len(result["orderGroups"]) == 4
 
 
 def _make_args(**kwargs):
@@ -81,7 +81,7 @@ def test_handle_orders_list_json(capsys):
     assert result == 0
     data = json.loads(capsys.readouterr().out)
     assert "orders" in data
-    assert len(data["orders"]) == 3
+    assert len(data["orders"]) == 4
 
 
 def test_handle_orders_list_filter_by_status(capsys):
@@ -119,7 +119,10 @@ def test_handle_orders_returns_filters_to_returned(capsys):
     result = handle_orders_returns(args, client)
     assert result == 0
     data = json.loads(capsys.readouterr().out)
+    assert len(data["orders"]) == 2
     assert all(o["status"] in ("RETURNED", "RETURN_IN_PROGRESS") for o in data["orders"])
+    statuses = {o["status"] for o in data["orders"]}
+    assert statuses == {"RETURNED", "RETURN_IN_PROGRESS"}
 
 
 def test_handle_orders_reorder_success(capsys):
@@ -209,4 +212,4 @@ def test_orders_list_command_end_to_end(capsys):
     assert result == 0
     data = json.loads(capsys.readouterr().out)
     assert "orders" in data
-    assert len(data["orders"]) == 3
+    assert len(data["orders"]) == 4
