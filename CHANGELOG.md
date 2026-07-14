@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.8.0 (2026-07-14)
+
+### Feat
+
+- add orders tool schemas to agent_specs/tools.json
+- wire orders subcommand into CLI parser and dispatch
+- add orders command handlers (list, reorder, returns)
+- add get_orders() client method and myorders fixture
+- add Order/OrderOffer models and order exception types
+
+### Fix
+
+- include RETURN_IN_PROGRESS in orders returns command
+
 ## v0.7.1 (2026-07-14)
 
 ### Fix
