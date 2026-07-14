@@ -135,6 +135,23 @@ def create_parser() -> argparse.ArgumentParser:
     # --- packages ---
     sub.add_parser("packages", parents=[common], help="Show packages/delivery summary")
 
+    # --- orders ---
+    sp_orders = sub.add_parser("orders", parents=[common], help="View and manage past orders")
+    orders_sub = sp_orders.add_subparsers(dest="orders_action", required=True)
+
+    sp_orders_list = orders_sub.add_parser("list", parents=[common], help="List past orders")
+    sp_orders_list.add_argument("--limit", type=int, default=15, help="Number of orders to fetch (default: 15)")
+    sp_orders_list.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
+    sp_orders_list.add_argument("--status", default=None, help="Filter by status: SENT, DELIVERED, RETURNED, etc.")
+    sp_orders_list.add_argument("--search", default=None, help="Search by offer title (case-insensitive)")
+
+    sp_orders_reorder = orders_sub.add_parser("reorder", parents=[common], help="Reorder items from a past order")
+    sp_orders_reorder.add_argument("order_id", help="Order ID to reorder")
+
+    sp_orders_returns = orders_sub.add_parser("returns", parents=[common], help="List orders with return/transit status")
+    sp_orders_returns.add_argument("--limit", type=int, default=15, help="Number of orders to fetch (default: 15)")
+    sp_orders_returns.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
+
     # --- login ---
     sub.add_parser("login", parents=[common], help="Import browser cookies (paste from Chrome DevTools)")
 
@@ -219,6 +236,19 @@ def main() -> int:
                 case "packages":
                     from allegro_cli.commands.packages import handle_packages_summary
                     return handle_packages_summary(args, client)
+                case "orders":
+                    from allegro_cli.commands.orders import (
+                        handle_orders_list,
+                        handle_orders_reorder,
+                        handle_orders_returns,
+                    )
+                    match args.orders_action:
+                        case "list":
+                            return handle_orders_list(args, client)
+                        case "reorder":
+                            return handle_orders_reorder(args, client)
+                        case "returns":
+                            return handle_orders_returns(args, client)
         finally:
             client.close()
 

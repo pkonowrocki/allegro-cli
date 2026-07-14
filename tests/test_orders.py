@@ -1,12 +1,13 @@
 import json
 import sys
 from io import StringIO
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from allegro_cli.api.models import Order, OrderOffer, OrderNotFoundException, CannotReorderException
 from allegro_cli.api.mock_client import MockAllegroClient
 from allegro_cli.config import Config
 from allegro_cli.commands.orders import handle_orders_list, handle_orders_reorder, handle_orders_returns
+from allegro_cli.main import create_parser, main
 
 
 def test_order_models_importable():
@@ -149,3 +150,63 @@ def test_handle_orders_reorder_cannot_reorder(capsys):
     assert result == 1
     err = json.loads(capsys.readouterr().err)
     assert err["errors"][0]["code"] == "CannotReorderException"
+
+
+def test_parser_orders_list():
+    parser = create_parser()
+    args = parser.parse_args(["orders", "list"])
+    assert args.command == "orders"
+    assert args.orders_action == "list"
+    assert args.limit == 15
+    assert args.page == 1
+    assert args.search is None
+    assert args.status is None
+
+
+def test_parser_orders_list_with_filters():
+    parser = create_parser()
+    args = parser.parse_args([
+        "orders", "list", "--limit", "30", "--page", "2",
+        "--status", "SENT", "--search", "laptop",
+    ])
+    assert args.limit == 30
+    assert args.page == 2
+    assert args.status == "SENT"
+    assert args.search == "laptop"
+
+
+def test_parser_orders_reorder():
+    parser = create_parser()
+    args = parser.parse_args(["orders", "reorder", "order-abc-123"])
+    assert args.command == "orders"
+    assert args.orders_action == "reorder"
+    assert args.order_id == "order-abc-123"
+
+
+def test_parser_orders_returns():
+    parser = create_parser()
+    args = parser.parse_args(["orders", "returns"])
+    assert args.command == "orders"
+    assert args.orders_action == "returns"
+
+
+def test_orders_list_command_end_to_end(capsys):
+    """Integration: main() dispatches to orders list via mock client."""
+    with (
+        patch("allegro_cli.main.load_config") as mock_load,
+        patch("allegro_cli.main.ensure_dirs"),
+        patch("allegro_cli.api.client.AllegroClient", return_value=_make_mock_client()),
+        patch("sys.argv", ["allegro", "orders", "list", "--format", "json"]),
+    ):
+        mock_load.return_value = MagicMock(
+            cookies="session=x",
+            edgeBaseUrl="https://edge.allegro.pl",
+            outputFormat="text",
+            cloakLicenseKey=None,
+        )
+        result = main()
+
+    assert result == 0
+    data = json.loads(capsys.readouterr().out)
+    assert "orders" in data
+    assert len(data["orders"]) == 3
