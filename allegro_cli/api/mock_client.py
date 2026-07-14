@@ -16,7 +16,7 @@ class MockResponse:
     json_data: Any = None
 
     def json(self) -> Any:
-        return self.json_data or json.loads(self.text)
+        return self.json_data if self.json_data is not None else json.loads(self.text)
 
 class MockAllegroClient(AllegroClient):
     """

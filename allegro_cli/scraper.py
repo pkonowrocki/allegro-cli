@@ -11,6 +11,7 @@ from allegro_cli.api.models import (
     Image,
     Offer,
     Price,
+    ScraperError,
     Seller,
     SellingMode,
     Stock,
@@ -114,9 +115,7 @@ def _is_real_offer(article: Tag, offer_id: str | None, title: str) -> bool:
         href = link["href"]
         if "/oferta/" in href or "/listing/" in href:
             return True
-        # Links with long numeric IDs are likely offers
-        if offer_id and len(offer_id) >= 8:
-            return True
+        return True
     return False
 
 
@@ -548,7 +547,6 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
     h1 = soup.find("h1")
     title = h1.get_text(strip=True) if h1 else "Unknown Title"
     if title == "Unknown Title":
-        from allegro_cli.api.models import ScraperError
         raise ScraperError("Could not find offer title (h1 tag)", path="h1")
 
     # ID — from canonical URL or passed-in ID
@@ -583,7 +581,6 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
                 price_amount = _clean_price(price_node.parent.get_text(strip=True))
     
     if not price_amount:
-        from allegro_cli.api.models import ScraperError
         raise ScraperError("Could not find offer price", path="price")
 
     # Image — og:image or first product image

@@ -9,7 +9,8 @@ def handle_packages_summary(args, client: AllegroClient) -> int:
     packages = client.get_packages_list()
 
     if args.format == "json":
-        return output_json({"summary": summary, "packages": packages})
+        output_json({"summary": summary, "packages": packages})
+        return 0
     elif args.format == "tsv":
         # Summary as first row
         rows = [{"total": str(summary.get("total", 0)),

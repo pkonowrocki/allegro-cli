@@ -33,7 +33,7 @@ def handle_config_set(args) -> int:
         config.edgeBaseUrl = args.edge_base_url
     if args.output_format is not None:
         config.outputFormat = args.output_format
-    if getattr(args, "cloak_license_key", None) is not None:
+    if args.cloak_license_key is not None:
         config.cloakLicenseKey = args.cloak_license_key
     save_config(config)
     output_json({"status": "ok", "message": "Configuration updated"})

@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 
 from allegro_cli.api.client import AllegroClient
-from allegro_cli.main import _DEFAULT_COLUMNS
+from allegro_cli.commands import _DEFAULT_COLUMNS
 from allegro_cli.output import output_json, output_text, output_tsv
 
 
@@ -29,18 +29,18 @@ def _compact_offer(offer) -> dict:
 def handle_search(args, client: AllegroClient) -> int:
     result = client.scrape_search(
         phrase=args.phrase,
-        page=getattr(args, "page", 1),
-        category=getattr(args, "category", None),
-        sort=getattr(args, "sort", None),
-        price_min=getattr(args, "price_min", None),
-        price_max=getattr(args, "price_max", None),
-        seller=getattr(args, "seller", None),
-        condition=getattr(args, "condition", None),
-        smart=getattr(args, "smart", False) or getattr(args, "free_shipping", False),
-        delivery_time=getattr(args, "delivery_time", None),
-        location=getattr(args, "location", None),
-        pay=getattr(args, "pay", False),
-        filters=getattr(args, "filter", None),
+        page=args.page,
+        category=args.category,
+        sort=args.sort,
+        price_min=args.price_min,
+        price_max=args.price_max,
+        seller=args.seller,
+        condition=args.condition,
+        smart=args.smart or args.free_shipping,
+        delivery_time=args.delivery_time,
+        location=args.location,
+        pay=args.pay,
+        filters=args.filter,
     )
 
     if args.format == "json":

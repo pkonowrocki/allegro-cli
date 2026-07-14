@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from allegro_cli.api.client import AllegroClient
-from allegro_cli.output import output_json, output_text, output_tsv
+from allegro_cli.output import make_error, output_error, output_json, output_text, output_tsv
 
 _CART_COLUMNS = [
     "selected",
@@ -143,34 +143,24 @@ def handle_cart_add(args, client: AllegroClient) -> int:
 
 
 def handle_cart_remove(args, client: AllegroClient) -> int:
-    seller_id = args.seller_id
-    if not seller_id:
-        # Try to find seller_id in the cart
-        cart = client.get_cart()
-def handle_cart_remove(args, client: AllegroClient) -> int:
     # 1. Find the unique item_id (UUID) for the given offer_id in the cart
-    item_id_to_remove = None
-    
-    try:
-        cart = client.get_cart()
-    except Exception:
-        print("Error: Could not fetch cart.")
-        return 1
+    cart = client.get_cart()
 
     if not isinstance(cart, dict):
-        print(f"Error: Expected dict from get_cart, got {type(cart)}")
+        output_error([make_error(f"Expected dict from get_cart, got {type(cart).__name__}", code="CartApiException")])
         return 1
 
     cart_data = cart.get("cart")
     if not isinstance(cart_data, dict):
-        print("Error: Cart data missing or invalid.")
+        output_error([make_error("Cart data missing or invalid.", code="CartApiException")])
         return 1
-        
+
     groups = cart_data.get("groups", [])
     if not isinstance(groups, list):
-        print("Error: Cart groups missing or invalid.")
+        output_error([make_error("Cart groups missing or invalid.", code="CartApiException")])
         return 1
-    
+
+    item_id_to_remove = None
     for group in groups:
         if not isinstance(group, dict):
             continue
@@ -193,16 +183,12 @@ def handle_cart_remove(args, client: AllegroClient) -> int:
             break
 
     if not item_id_to_remove:
-        print(f"Error: Offer {args.offer_id} not found in cart.")
+        output_error([make_error(f"Offer {args.offer_id} not found in cart.", code="CartItemNotFoundException")])
         return 1
 
     # 2. Use the new DELETE endpoint
-    try:
-        client.remove_cart_item(item_id_to_remove)
-    except Exception as e:
-        print(f"Error removing item: {e}")
-        return 1
-    
+    client.remove_cart_item(item_id_to_remove)
+
     cart = client.get_cart()
     _output_cart(cart, args.format)
     return 0

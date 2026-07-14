@@ -12,15 +12,11 @@ from rich.panel import Panel
 console = Console()
 
 
-def _to_serializable(obj: Any) -> Any:
-    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        return dataclasses.asdict(obj)
-    return obj
-
-
 def output_json(data: Any, file=None) -> None:
     file = file or sys.stdout
-    json.dump(_to_serializable(data), file, indent=2, ensure_ascii=False)
+    if dataclasses.is_dataclass(data) and not isinstance(data, type):
+        data = dataclasses.asdict(data)
+    json.dump(data, file, indent=2, ensure_ascii=False)
     print(file=file)
 
 

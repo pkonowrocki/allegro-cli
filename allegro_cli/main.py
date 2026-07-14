@@ -4,10 +4,9 @@ import argparse
 import sys
 
 from allegro_cli.api.models import AllegroCliError, AuthenticationError
+from allegro_cli.commands import _DEFAULT_COLUMNS
 from allegro_cli.config import ensure_dirs, load_config
 from allegro_cli.output import make_error, output_error
-
-_DEFAULT_COLUMNS = "id,name,sellingMode.price.amount,seller.name"
 
 
 def create_parser() -> argparse.ArgumentParser:

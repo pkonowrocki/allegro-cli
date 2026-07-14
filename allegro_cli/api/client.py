@@ -95,12 +95,6 @@ class AllegroClient:
         pay: bool = False,
         filters: list[str] | None = None,
     ) -> SearchResult:
-        if not self._config.cookies:
-            raise AuthenticationError(
-                "No cookies configured. Scrape requires browser cookies.\n"
-                "Run: allegro login"
-            )
-
         from allegro_cli.scraper import parse_next_page_url, parse_search_results
 
         if seller:
@@ -155,11 +149,6 @@ class AllegroClient:
 
     def scrape_offer(self, offer_id: str) -> Offer:
         """Fetch and parse a single offer page by ID."""
-        if not self._config.cookies:
-            raise AuthenticationError(
-                "No cookies configured. Scrape requires browser cookies.\n"
-                "Run: allegro login"
-            )
         from allegro_cli.scraper import (
             extract_lazy_contexts,
             parse_offer_page,
