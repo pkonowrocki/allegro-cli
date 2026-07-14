@@ -64,5 +64,43 @@
     "name": "allegro_track_packages",
     "description": "Get a list of all active shipments and their current delivery status.",
     "parameters": { "type": "object", "properties": {} }
+  },
+  {
+    "name": "allegro_orders_list",
+    "description": "List past Allegro orders with status, price, and tracking info. Supports filtering by status and title search.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": { "type": "integer", "description": "Number of orders to fetch (default: 15, max: 50)", "default": 15 },
+        "page": { "type": "integer", "description": "Page number (default: 1)", "default": 1 },
+        "status": { "type": "string", "enum": ["SENT", "DELIVERED", "RETURNED", "RETURN_IN_PROGRESS"], "description": "Filter by order status" },
+        "search": { "type": "string", "description": "Filter by offer title (case-insensitive substring)" },
+        "compact": { "type": "boolean", "description": "Return minimal fields for token efficiency", "default": false }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "allegro_orders_reorder",
+    "description": "Re-add all reorderable items from a past order to the shopping cart. Only items with CAN_BUY_AGAIN trait are added.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "order_id": { "type": "string", "description": "The order ID to reorder (from allegro_orders_list)" }
+      },
+      "required": ["order_id"]
+    }
+  },
+  {
+    "name": "allegro_orders_returns",
+    "description": "List orders currently in return or transit-return status (RETURNED, RETURN_IN_PROGRESS).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": { "type": "integer", "description": "Number of orders to fetch (default: 15)", "default": 15 },
+        "page": { "type": "integer", "description": "Page number (default: 1)", "default": 1 }
+      },
+      "required": []
+    }
   }
 ]
