@@ -196,29 +196,32 @@ def main() -> int:
         from allegro_cli.api.client import AllegroClient
         client = AllegroClient(config, verbose=args.verbose)
 
-        match args.command:
-            case "search":
-                from allegro_cli.commands.search import handle_search
-                return handle_search(args, client)
-            case "offer":
-                from allegro_cli.commands.search import handle_offer
-                return handle_offer(args, client)
-            case "cart":
-                from allegro_cli.commands.cart import (
-                    handle_cart_list,
-                    handle_cart_add,
-                    handle_cart_remove,
-                )
-                match args.cart_action:
-                    case "list":
-                        return handle_cart_list(args, client)
-                    case "add":
-                        return handle_cart_add(args, client)
-                    case "remove":
-                        return handle_cart_remove(args, client)
-            case "packages":
-                from allegro_cli.commands.packages import handle_packages_summary
-                return handle_packages_summary(args, client)
+        try:
+            match args.command:
+                case "search":
+                    from allegro_cli.commands.search import handle_search
+                    return handle_search(args, client)
+                case "offer":
+                    from allegro_cli.commands.search import handle_offer
+                    return handle_offer(args, client)
+                case "cart":
+                    from allegro_cli.commands.cart import (
+                        handle_cart_list,
+                        handle_cart_add,
+                        handle_cart_remove,
+                    )
+                    match args.cart_action:
+                        case "list":
+                            return handle_cart_list(args, client)
+                        case "add":
+                            return handle_cart_add(args, client)
+                        case "remove":
+                            return handle_cart_remove(args, client)
+                case "packages":
+                    from allegro_cli.commands.packages import handle_packages_summary
+                    return handle_packages_summary(args, client)
+        finally:
+            client.close()
 
     except AuthenticationError as exc:
         output_error([make_error(

@@ -132,7 +132,7 @@ def _try_extract_json_offers(html: str) -> list[Offer] | None:
 
     try:
         data = json.loads(match.group(1))
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError:
         return None
 
     # Navigate the Next.js data structure to find offer items
@@ -295,7 +295,7 @@ def _extract_parameters_from_serialized_json(soup: BeautifulSoup) -> dict[str, s
             continue
         try:
             data = json.loads(text)
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError:
             continue
         if not isinstance(data, dict):
             continue
@@ -342,7 +342,7 @@ def _extract_parameters_from_json(html: str) -> dict[str, str]:
 
     try:
         data = json.loads(match.group(1))
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError:
         return {}
 
     props = data.get("props", {}).get("pageProps", {})
@@ -512,7 +512,7 @@ def extract_lazy_contexts(html: str) -> list[dict]:
         box_id = m.group(1)
         try:
             data = json.loads(m.group(2))
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError:
             continue
         if not isinstance(data, dict):
             continue

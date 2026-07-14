@@ -341,8 +341,8 @@ class AllegroClient:
 
         resp = edge.request(method, path, headers=headers, **kwargs)
         if self._verbose:
-            print(f"DEBUG: {method} {path} -> {resp.status_code}")
-            print(f"DEBUG Response: {resp.text}")
+            self._log(f"DEBUG: {method} {path} -> {resp.status_code}")
+            self._log(f"DEBUG Response: {resp.text}")
         if resp.status_code == 401:
             raise AuthenticationError("Session expired (401). Run: allegro login")
         if resp.status_code == 403:
@@ -350,7 +350,7 @@ class AllegroClient:
                 message="Forbidden (403)",
                 userMessage="Access denied. Your session cookies may have expired.",
             )
-        if resp.status_code >= 400 and resp.status_code != 204:
+        if resp.status_code >= 400:
             # Check if it's a cart-related endpoint
             if "/cart" in path or "/carts" in path:
                 raise CartError(

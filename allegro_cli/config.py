@@ -40,3 +40,4 @@ def save_config(config: Config, path: Path | None = None) -> None:
         json.dumps(asdict(config), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+    path.chmod(0o600)
