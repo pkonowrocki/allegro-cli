@@ -1,0 +1,87 @@
+{
+  "status_code": 200,
+  "body": {
+    "orderGroups": [
+      {
+        "groupId": "group-1",
+        "myorders": [
+          {
+            "id": "order-delivered-1",
+            "seller": {"id": "seller-100", "login": "bestshop"},
+            "offers": [
+              {
+                "id": "offer-aaa",
+                "title": "Laptop Dell XPS 15",
+                "unitPrice": "4999.00 PLN",
+                "quantity": 1,
+                "imageUrl": "https://img.allegrostatic.pl/foo.jpg",
+                "orderDate": "2026-06-01T12:00:00Z",
+                "traits": ["CAN_BUY_AGAIN"]
+              }
+            ],
+            "delivery": {
+              "status": "DELIVERED",
+              "waybillsData": [{"waybillNumber": "PL123456789"}]
+            },
+            "totalCost": {"amount": "4999.00", "currency": "PLN"},
+            "status": {"primary": "DELIVERED", "actions": []}
+          }
+        ]
+      },
+      {
+        "groupId": "group-2",
+        "myorders": [
+          {
+            "id": "order-sent-2",
+            "seller": {"id": "seller-200", "login": "techstore"},
+            "offers": [
+              {
+                "id": "offer-bbb",
+                "title": "Mechanical Keyboard",
+                "unitPrice": "299.00 PLN",
+                "quantity": 1,
+                "imageUrl": null,
+                "orderDate": "2026-06-10T09:00:00Z",
+                "traits": []
+              }
+            ],
+            "delivery": {
+              "status": "SENT",
+              "waybillsData": [{"waybillNumber": "PL987654321"}]
+            },
+            "totalCost": {"amount": "299.00", "currency": "PLN"},
+            "status": {"primary": "SENT", "actions": []}
+          }
+        ]
+      },
+      {
+        "groupId": "group-3",
+        "myorders": [
+          {
+            "id": "order-returned-3",
+            "seller": {"id": "seller-300", "login": "gadgetworld"},
+            "offers": [
+              {
+                "id": "offer-ccc",
+                "title": "Wireless Mouse",
+                "unitPrice": "89.00 PLN",
+                "quantity": 2,
+                "imageUrl": null,
+                "orderDate": "2026-05-20T15:00:00Z",
+                "traits": []
+              }
+            ],
+            "delivery": {
+              "status": "RETURNED",
+              "waybillsData": []
+            },
+            "totalCost": {"amount": "178.00", "currency": "PLN"},
+            "status": {"primary": "RETURNED", "actions": []}
+          }
+        ]
+      }
+    ],
+    "total": 3,
+    "offset": 0
+  }
+}

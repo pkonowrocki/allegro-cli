@@ -1,4 +1,6 @@
 from allegro_cli.api.models import Order, OrderOffer, OrderNotFoundException, CannotReorderException
+from allegro_cli.api.mock_client import MockAllegroClient
+from allegro_cli.config import Config
 
 
 def test_order_models_importable():
@@ -36,3 +38,17 @@ def test_cannot_reorder_exception():
     exc = CannotReorderException("order-xyz")
     assert exc.code == "CannotReorderException"
     assert "order-xyz" in exc.message
+
+
+def _make_mock_client():
+    config = Config(cookies="session=x", edgeBaseUrl="https://edge.allegro.pl")
+    return MockAllegroClient(config, fixtures_path="tests/fixtures")
+
+
+def test_get_orders_returns_dict():
+    client = _make_mock_client()
+    result = client.get_orders()
+    assert isinstance(result, dict)
+    assert "orderGroups" in result
+    assert result["total"] == 3
+    assert len(result["orderGroups"]) == 3

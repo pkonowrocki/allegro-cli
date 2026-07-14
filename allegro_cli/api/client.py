@@ -313,6 +313,14 @@ class AllegroClient:
         data = resp.json()
         return data.get("packages", [])
 
+    def get_orders(self, offset: int = 0, limit: int = 15) -> dict:
+        """Fetch paginated order history from edge.allegro.pl/myorders."""
+        resp = self._request(
+            "GET", f"/myorders?offset={offset}&limit={limit}",
+            accept="application/vnd.allegro.internal.v1+json",
+        )
+        return resp.json()
+
     # --- HTTP layer (edge API, cookie auth) ---
 
     def _request(
