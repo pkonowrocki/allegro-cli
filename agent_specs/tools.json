@@ -31,6 +31,17 @@
     }
   },
   {
+    "name": "allegro_compare",
+    "description": "Compare other sellers of the same Allegro product or multipack using the Other Offers panel. Returns cheapest/fastest summaries and the first cheapest-sorted listing page. Always check complete, offerCount and returnedOfferCount: results can be partial. Smart badges and displayed delivery totals are not checkout guarantees.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "offer_id": { "type": "string", "description": "ID of the source offer whose product or product set should be compared" }
+      },
+      "required": ["offer_id"]
+    }
+  },
+  {
     "name": "allegro_cart_list",
     "description": "List all items currently in the user's Allegro shopping cart.",
     "parameters": { "type": "object", "properties": {} }

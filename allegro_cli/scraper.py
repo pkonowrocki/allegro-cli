@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup, Tag
 
@@ -21,6 +22,20 @@ from allegro_cli.api.models import (
 def _extract_offer_id(url: str) -> str | None:
     if not url:
         return None
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    # Current product cards carry offerId; sponsored cards wrap the URL.
+    if parsed.path == "/events/clicks":
+        target = query.get("redirect", [""])[0]
+        target_parts = urlparse(target)
+        if target_parts.hostname != "allegro.pl":
+            return None
+        url = target
+        parsed = target_parts
+        query = parse_qs(parsed.query)
+    offer_id = query.get("offerId", [""])[0]
+    if re.fullmatch(r"\d{8,}", offer_id):
+        return offer_id
     # Standard: /oferta/slug-12345678
     match = re.search(r"-(\d{6,})$", url.split("?")[0])
     if match:
@@ -246,6 +261,8 @@ def parse_search_results(html: str) -> list[Offer]:
             link_tag = article.find("a", href=True)
             url = link_tag["href"] if link_tag else ""
             offer_id = _extract_offer_id(url)
+            if offer_id and ("/events/clicks?" in url or "offerId=" in url):
+                url = f"https://allegro.pl/oferta/{offer_id}"
 
             if not _is_real_offer(article, offer_id, title):
                 continue
@@ -557,7 +574,9 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
 
     # URL — from canonical link or construct from offer_id
     canonical = soup.find("link", rel="canonical")
-    offer_url = canonical["href"] if canonical and canonical.get("href") else (f"https://allegro.pl/oferta/-{offer_id}" if offer_id else "")
+    offer_url = canonical["href"] if canonical and canonical.get("href") else ""
+    if offer_id and _extract_offer_id(offer_url) != offer_id:
+        offer_url = f"https://allegro.pl/oferta/-{offer_id}"
 
     # Price — meta tag is most reliable on offer pages
     price_amount = ""
@@ -565,6 +584,21 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
     if meta_price and meta_price.get("content"):
         price_amount = meta_price["content"]
     else:
+        # Current offer pages serialize the selected offer's own price.
+        # Bind it to the requested ID so recommendations cannot win.
+        for script in soup.find_all("script", attrs={"data-serialize-box-id": True}):
+            try:
+                data = json.loads(script.get_text())
+            except (ValueError, TypeError):
+                continue
+            if not isinstance(data, dict) or str(data.get("offerId", "")) != offer_id:
+                continue
+            price_data = data.get("price")
+            if isinstance(price_data, dict) and isinstance(price_data.get("priceString"), str):
+                price_amount = _clean_price(price_data["priceString"])
+                if price_amount:
+                    break
+    if not price_amount:
         # Fallback: aria-label with "cena"
         price_el = soup.find(
             attrs={"aria-label": lambda x: x and "cena" in x.lower() and "zł" in x},
@@ -620,6 +654,103 @@ def parse_offer_page(html: str, offer_id: str = "") -> Offer:
         images=[Image(url=image_url)] if image_url else [],
         parameters=parameters,
     )
+
+
+def parse_other_offers_panel(html: str) -> dict | None:
+    """Read only the serialized 'Other Offers' box, never recommendations."""
+    soup = BeautifulSoup(html, "lxml")
+    box = soup.find(attrs={"data-box-name": "Other Offers"})
+    if not box:
+        return None
+    script = soup.find("script", attrs={"data-serialize-box-id": box.get("data-box-id")})
+    if not script:
+        raise ScraperError("Other Offers panel payload missing", path="otherOffers")
+    try:
+        data = json.loads(script.get_text())
+    except ValueError as exc:
+        raise ScraperError("Invalid Other Offers panel payload", path="otherOffers") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("offerCount"), int):
+        raise ScraperError("Invalid Other Offers panel count", path="otherOffers")
+    result = {
+        "title": data.get("title"),
+        "offerCount": data["offerCount"],
+        "isProductSet": data.get("isProductSet"),
+        "cheapest": None,
+        "fastest": None,
+    }
+    for group in data.get("links", []):
+        for link in group.get("links", []):
+            kind = link.get("analyticsAttributes", {}).get("data-analytics-click-label")
+            if kind not in ("cheapest", "fastest"):
+                continue
+            raw = link.get("rawPrice") or {}
+            amount = raw.get("amount")
+            if not isinstance(amount, str) or not re.fullmatch(r"\d+(?:\.\d+)?", amount):
+                raise ScraperError("Other Offers panel price missing", path="otherOffers.price")
+            url = link.get("url") or ""
+            offer_id = _extract_offer_id(url)
+            result[kind] = {
+                "price": {"amount": amount, "currency": raw.get("currency")},
+                "subtitle": link.get("subtitle"),
+                "smartEligible": bool(link.get("freeboxIcon") and
+                                      link["freeboxIcon"].get("alt") == "Smart!"),
+                "offerId": offer_id,
+                "url": url if offer_id else None,
+                "queryParameters": {p["name"]: p["value"]
+                                    for p in link.get("queryParameters", [])},
+            }
+    return result
+
+
+def parse_other_offers_listing(html: str) -> list[dict]:
+    """Parse only actual cards inside the comparison listing."""
+    soup = BeautifulSoup(html, "lxml")
+    box = soup.find(attrs={"data-box-name": "ProductListingContent"})
+    if not box:
+        raise ScraperError("Other Offers listing missing", path="otherOffers.listing")
+    result = []
+    seen = set()
+    for article in box.find_all("article"):
+        heading = article.find(["h2", "h3"])
+        link = heading.find("a", href=True) if heading else None
+        if not link:
+            continue
+        url = link["href"]
+        parts = urlparse(url)
+        if parts.hostname not in (None, "allegro.pl"):
+            continue
+        offer_id = _extract_offer_id(url)
+        if not offer_id or offer_id in seen:
+            continue
+        price_el = article.find(attrs={"aria-label": lambda v: v and "aktualna cena" in v})
+        price_match = re.search(r"([\d\s\xa0.,]+)\s*zł", price_el["aria-label"]) if price_el else None
+        amount = _clean_price(price_match.group(1) + "zł") if price_match else ""
+        if not amount:
+            raise ScraperError(f"Missing comparison price for {offer_id}", path="otherOffers.price")
+        text = article.get_text(" ", strip=True)
+        seller = re.search(r"\|\s*(.+?)\s+Poleca sprzedającego:", text)
+        total = re.search(r"(\d[\d\s\xa0]*,\d{2})\s*zł\s+z dostawą", text)
+        condition = None
+        for dt in article.find_all("dt"):
+            if dt.get_text(strip=True) == "Stan":
+                dd = dt.find_next_sibling("dd")
+                condition = dd.get_text(strip=True) if dd else None
+                break
+        product = re.search(r"([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$", parts.path)
+        result.append({
+            "offerId": offer_id,
+            "name": heading.get_text(" ", strip=True),
+            "url": url if parts.hostname else "https://allegro.pl" + url,
+            "productId": product.group(1) if product else None,
+            "price": {"amount": amount, "currency": "PLN"},
+            "seller": seller.group(1).strip() if seller else None,
+            "condition": condition,
+            "smartEligible": article.find("img", alt="Smart!") is not None,
+            "displayedTotalWithDelivery": {"amount": _clean_price(total.group(1) + "zł"),
+                                           "currency": "PLN"} if total else None,
+        })
+        seen.add(offer_id)
+    return result
 
 
 def parse_next_page_url(html: str) -> str | None:

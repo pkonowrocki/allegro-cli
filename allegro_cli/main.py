@@ -115,6 +115,13 @@ def create_parser() -> argparse.ArgumentParser:
         help=f"Comma-separated columns (default: {_DEFAULT_COLUMNS})",
     )
 
+    # --- compare (same product / product set, other sellers) ---
+    sp_compare = sub.add_parser(
+        "compare", parents=[common],
+        help="Read cheapest/fastest panel and first page of other sellers",
+    )
+    sp_compare.add_argument("offer_id", help="Source offer ID")
+
     # --- cart ---
     sp_cart = sub.add_parser("cart", parents=[common], help="Manage shopping cart")
     cart_sub = sp_cart.add_subparsers(dest="cart_action", required=True)
@@ -220,6 +227,9 @@ def main() -> int:
                 case "offer":
                     from allegro_cli.commands.search import handle_offer
                     return handle_offer(args, client)
+                case "compare":
+                    from allegro_cli.commands.search import handle_compare
+                    return handle_compare(args, client)
                 case "cart":
                     from allegro_cli.commands.cart import (
                         handle_cart_list,

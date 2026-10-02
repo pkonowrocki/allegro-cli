@@ -68,6 +68,30 @@ def handle_search(args, client: AllegroClient) -> int:
     return 0
 
 
+def handle_compare(args, client: AllegroClient) -> int:
+    result = client.compare_offer(args.offer_id)
+    if args.format == "json":
+        output_json(result)
+    else:
+        columns = ["offerId", "name", "seller", "price.amount", "condition",
+                   "smartEligible", "displayedTotalWithDelivery.amount", "url"]
+        if args.format == "tsv":
+            metadata = {k: result[k] for k in ("sourceOfferId", "offerCount", "returnedOfferCount",
+                                              "complete", "deliveryPriceScope")}
+            rows = [{**o, **metadata} for o in result["offers"]] or [metadata]
+            output_tsv(rows, columns=columns + list(metadata))
+        else:
+            from allegro_cli.output import console
+            console.print(f"{result['title']}: {result['returnedOfferCount']}/{result['offerCount']} offers; "
+                          f"complete={result['complete']}", markup=False)
+            summary = [{"kind": kind, **result[kind]} for kind in ("cheapest", "fastest")
+                       if result[kind]]
+            output_text(summary, columns=["kind", "price.amount", "subtitle", "smartEligible"])
+            output_text(result["offers"], columns=columns)
+            console.print("Delivery totals are displayed listing prices, not confirmed checkout totals.")
+    return 0
+
+
 def handle_offer(args, client: AllegroClient) -> int:
     offer = client.scrape_offer(args.offer_id)
 

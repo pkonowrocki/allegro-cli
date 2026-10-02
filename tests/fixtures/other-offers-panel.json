@@ -1,0 +1,128 @@
+{
+  "title": "Ten wielopak od innych sprzedających",
+  "productName": null,
+  "showAllOffersLink": null,
+  "offerCount": 4,
+  "tooltipLinkUrl": "/pomoc/dla-kupujacych/wyszukiwanie-i-obserwowanie/sortowanie-ofert-i-produktow-jnbYnoArKSy#sortowanie-w-sekcji-inne-oferty-tego-produktu",
+  "links": [
+    {
+      "title": "NAJTANIEJ",
+      "groupIcon": {
+        "url": "https://a.allegroimg.com/original/34a26a/daf9c75c42cb94e89de75e8bf6aa/illustration-small-piggy-bank-9e9be58e23",
+        "darkModeUrl": null
+      },
+      "links": [
+        {
+          "selector": "other-offers-link-cheapest",
+          "subtitle": "Stan: Nowy",
+          "freeboxIcon": {
+            "url": "https://a.allegroimg.com/original/343b4d/ed3f5c04412ab7bd70dd0a34f0cd/brand-subbrand-smart-d8bfa93f10.svg",
+            "urlDark": null,
+            "alt": "Smart!"
+          },
+          "price": {
+            "main": "43,",
+            "fraction": "90 zł",
+            "label": null
+          },
+          "rawPrice": {
+            "amount": "43.90",
+            "currency": "PLN",
+            "label": null
+          },
+          "secondaryPrice": null,
+          "url": "#inne-oferty-produktu",
+          "analyticsAttributes": {
+            "data-analytics-click-label": "cheapest",
+            "data-analytics-click-value": "e0cf3361-f9c8-4f2a-a078-f518841e984d"
+          },
+          "queryParameters": [
+            {
+              "name": "order",
+              "value": "p"
+            },
+            {
+              "name": "buyNew",
+              "value": "1"
+            },
+            {
+              "name": "offerTypeBuyNow",
+              "value": "1"
+            }
+          ],
+          "webviewUrl": null
+        }
+      ]
+    },
+    {
+      "title": "NAJSZYBCIEJ",
+      "groupIcon": {
+        "url": "https://a.allegroimg.com/original/3454b3/874ca6484118b7ab7e1b4f816d9e/illustration-small-truck-fast-moving-889751475d",
+        "darkModeUrl": null
+      },
+      "links": [
+        {
+          "selector": "other-offers-link-fastest",
+          "subtitle": "dostawa w sobotę – kup do 19:05",
+          "freeboxIcon": {
+            "url": "https://a.allegroimg.com/original/343b4d/ed3f5c04412ab7bd70dd0a34f0cd/brand-subbrand-smart-d8bfa93f10.svg",
+            "urlDark": null,
+            "alt": "Smart!"
+          },
+          "price": {
+            "main": "44,",
+            "fraction": "99 zł",
+            "label": null
+          },
+          "rawPrice": {
+            "amount": "44.99",
+            "currency": "PLN",
+            "label": null
+          },
+          "secondaryPrice": null,
+          "url": "#inne-oferty-produktu",
+          "analyticsAttributes": {
+            "data-analytics-click-label": "fastest",
+            "data-analytics-click-value": "e0cf3361-f9c8-4f2a-a078-f518841e984d"
+          },
+          "queryParameters": [
+            {
+              "name": "order",
+              "value": "ldta"
+            },
+            {
+              "name": "buyNew",
+              "value": "1"
+            },
+            {
+              "name": "offerTypeBuyNow",
+              "value": "1"
+            }
+          ],
+          "webviewUrl": null
+        }
+      ]
+    }
+  ],
+  "itemViewCustomParams": {
+    "data-analytics-enabled": true,
+    "data-item": true,
+    "data-analytics-view-custom-other-offers-count": 4,
+    "data-analytics-view-custom-cheapest-price": "{\"amount\":\"43.90\",\"currency\":\"PLN\",\"label\":null}",
+    "data-analytics-view-custom-fastest-price": "{\"amount\":\"44.99\",\"currency\":\"PLN\",\"label\":null}"
+  },
+  "itemViewCustomParamsForMBox": {
+    "otherOffersCount": 4,
+    "cheapestPrice": {
+      "amount": "43.90",
+      "currency": "PLN"
+    },
+    "fastestPrice": {
+      "amount": "44.99",
+      "currency": "PLN"
+    }
+  },
+  "isProductSet": true,
+  "horizontalLayout": false,
+  "lightDesign": true
+}

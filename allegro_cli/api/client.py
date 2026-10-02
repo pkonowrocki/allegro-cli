@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 import time
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode, urlparse
 
 import httpx
 from cloakbrowser import launch
@@ -67,6 +68,10 @@ class AllegroClient:
             if "=" not in pair:
                 continue
             name, _, value = pair.partition("=")
+            # Let CloakBrowser establish its own DataDome cookie. Reusing a
+            # token from a different browser caused 403 on valid sessions.
+            if name.strip().lower() == "datadome":
+                continue
             cookies.append({
                 "name": name.strip(),
                 "value": value.strip(),
@@ -156,6 +161,11 @@ class AllegroClient:
         url = f"https://allegro.pl/oferta/-{offer_id}"
         try:
             html = self._fetch_page(url)
+        except RateLimitError:
+            # Direct offer navigation is blocked even when following its
+            # actual link from a listing works in the same headless backend.
+            resolved_url = self._page.url if self._page else url
+            html = self._fetch_offer_via_listing(offer_id, resolved_url)
         except AllegroCliError as e:
             if e.code == "NotFoundException":
                 raise OfferNotFoundError(offer_id)
@@ -174,6 +184,128 @@ class AllegroClient:
                     offer.parameters.setdefault(k, v)
 
         return offer
+
+    def _fetch_offer_via_listing(self, offer_id: str, resolved_url: str) -> str:
+        from bs4 import BeautifulSoup
+        from allegro_cli.scraper import _extract_offer_id
+
+        resolved = urlparse(resolved_url)
+        match = re.fullmatch(
+            r"/oferta/(.+)-" + re.escape(offer_id), unquote(resolved.path),
+        )
+        if resolved.hostname != "allegro.pl" or not match:
+            raise RateLimitError("Offer blocked; no resolved product title for listing navigation")
+        phrase = match.group(1).replace("-", " ")
+        listing_url = "https://allegro.pl/listing?" + urlencode({"string": phrase})
+
+        # A denied navigation leaves a browser-bound challenge cookie behind.
+        # Keep saved account cookies and the edge client untouched.
+        self.close()
+        listing_html = self._fetch_page(listing_url)
+        page = self._ensure_browser()
+        soup = BeautifulSoup(listing_html, "lxml")
+        href = None
+        for article in soup.find_all("article"):
+            for link in article.find_all("a", href=True):
+                candidate = link["href"]
+                if urlparse(candidate).hostname not in (None, "allegro.pl"):
+                    continue
+                if _extract_offer_id(candidate) == offer_id:
+                    href = candidate
+                    break
+            if href:
+                break
+        if not href:
+            raise ScraperError(f"Offer {offer_id} not present in fallback listing")
+
+        self._log(f"Following exact offer {offer_id} from listing (headless)")
+        selector = "article a[href=" + json.dumps(href) + "]"
+        navigation_statuses = []
+
+        def record_navigation(response):
+            if response.request.is_navigation_request() and response.request.frame == page.main_frame:
+                navigation_statuses.append(response.status)
+
+        page.on("response", record_navigation)
+        try:
+            with page.expect_navigation(wait_until="domcontentloaded", timeout=30000) as navigation:
+                page.locator(selector).first.click(timeout=15000)
+            response = navigation.value
+            # DataDome can return an initial 403 that its own JS resolves via
+            # redirects. Wait for product content, then require a final 200.
+            page.wait_for_selector("h1", state="attached", timeout=20000)
+            final_status = navigation_statuses[-1] if navigation_statuses else (
+                response.status if response else 0
+            )
+            if final_status != 200:
+                raise RateLimitError("Offer remains blocked after listing navigation")
+            if urlparse(page.url).hostname != "allegro.pl" or _extract_offer_id(page.url) != offer_id:
+                raise ScraperError("Listing navigation did not reach the requested offer")
+            return page.content()
+        finally:
+            page.remove_listener("response", record_navigation)
+
+    def compare_offer(self, offer_id: str) -> dict:
+        """Read Allegro's comparison panel and its first cheapest-sorted page."""
+        from decimal import Decimal
+        from urllib.parse import parse_qs
+        from allegro_cli.scraper import parse_other_offers_panel, parse_other_offers_listing
+
+        self.scrape_offer(offer_id)
+        page = self._ensure_browser()
+        summary = parse_other_offers_panel(page.content())
+        if summary is None:
+            raise ScraperError("This offer has no Other Offers panel", path="otherOffers")
+        result = {"sourceOfferId": offer_id, **summary, "offers": [],
+                  "returnedOfferCount": 0, "complete": False, "page": 1,
+                  "sort": "price", "deliveryPriceScope": "displayed_listing_not_checkout"}
+        if not summary["cheapest"]:
+            return result
+        page.locator(".other-offers-link-cheapest").first.click(timeout=15000)
+        page.wait_for_selector('[data-box-name="ProductListingContent"] article h2',
+                               state="attached", timeout=20000)
+        params = parse_qs(urlparse(page.url).query)
+        for key, value in summary["cheapest"]["queryParameters"].items():
+            if params.get(key) != [value]:
+                raise ScraperError("Comparison filters not applied", path="otherOffers.filters")
+        # Matching price/condition cannot distinguish stale cards with equal
+        # prices. A full reload provides a new document for the selected URL,
+        # independent of the sidebar's asynchronous update generation.
+        self._fetch_page(page.url, reload=True)
+        page.wait_for_selector('[data-box-name="ProductListingContent"] article h2',
+                               state="attached", timeout=20000)
+        params = parse_qs(urlparse(page.url).query)
+        for key, value in summary["cheapest"]["queryParameters"].items():
+            if params.get(key) != [value]:
+                raise ScraperError("Comparison filters lost after reload", path="otherOffers.filters")
+        # A new document alone is insufficient if its cards are hydrated later.
+        # Keep price/condition checks as additional validation of fresh results.
+        deadline = time.monotonic() + 20
+        while True:
+            try:
+                offers = parse_other_offers_listing(page.content())
+            except ScraperError:
+                offers = []
+            offers.sort(key=lambda o: Decimal(o["price"]["amount"]))
+            new_only = params.get("buyNew") == ["1"]
+            ready = (offers and offers[0]["price"] == summary["cheapest"]["price"] and
+                     (not new_only or all(o["condition"] == "Nowy" for o in offers)))
+            if ready:
+                break
+            if time.monotonic() >= deadline:
+                raise ScraperError("Comparison listing did not match panel price/condition after refresh",
+                                   path="otherOffers.listing")
+            page.wait_for_timeout(200)
+        result["offers"] = offers
+        result["returnedOfferCount"] = len(offers)
+        # Conservative: panel count can include conditions hidden by filters.
+        result["complete"] = len(offers) == summary["offerCount"]
+        selected_id = summary["cheapest"]["offerId"]
+        candidate = (next((o for o in offers if o["offerId"] == selected_id), None)
+                     if selected_id else offers[0])
+        if candidate and candidate["price"] == summary["cheapest"]["price"]:
+            result["cheapest"] = {**summary["cheapest"], **candidate}
+        return result
 
     def _fetch_lazy_parameters(
         self, offer_url: str, contexts: list[dict],
@@ -209,14 +341,70 @@ class AllegroClient:
                 break
         return result
 
-    def _fetch_page(self, url: str) -> str:
+    def _fetch_page(self, url: str, *, reload: bool = False) -> str:
+        from urllib.parse import parse_qs
+        from playwright.sync_api import Error as PlaywrightError
+        from allegro_cli.scraper import _extract_offer_id
+
         page = self._ensure_browser()
         self._log(f"GET {url} (CloakBrowser)")
-        t0 = time.monotonic()
-        resp = page.goto(url, wait_until="domcontentloaded")
-        elapsed = time.monotonic() - t0
-        status = resp.status if resp else 0
-        self._log(f"Response: {status} ({elapsed:.1f}s)")
+        responses = []
+
+        def record_navigation(response):
+            if response.request.is_navigation_request() and response.request.frame == page.main_frame:
+                responses.append(response)
+
+        # Register before goto: challenge JS can redirect before it returns.
+        page.on("response", record_navigation)
+        try:
+            t0 = time.monotonic()
+            resp = (page.reload(wait_until="domcontentloaded", timeout=30000) if reload else
+                    page.goto(url, wait_until="domcontentloaded", timeout=30000))
+            status = resp.status if resp else 0
+            self._log(f"Response: {status} ({time.monotonic() - t0:.1f}s)")
+            if status == 403:
+                requested = urlparse(url)
+                requested_id = _extract_offer_id(url) if requested.path.startswith(("/oferta/", "/produkt/")) else None
+                selector = "h1" if requested_id else "body"
+                deadline = time.monotonic() + 20
+                restored_query = False
+                while True:
+                    latest = responses[-1] if responses else resp
+                    current = urlparse(page.url)
+                    same_target = (current.scheme == "https" and current.hostname == requested.hostname and
+                                   (_extract_offer_id(page.url) == requested_id if requested_id else
+                                    current.path == requested.path and all(
+                                        parse_qs(current.query).get(k) == v
+                                        for k, v in parse_qs(requested.query).items())))
+                    if (latest and latest.status == 200 and not same_target and not requested_id and
+                        not restored_query and current.scheme == "https" and
+                        current.hostname == requested.hostname and current.path == requested.path):
+                        # Challenge redirects can turn query spaces into literal '+'.
+                        # With the established session, restore the exact request once.
+                        restored_query = True
+                        restored = page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                        if restored:
+                            responses.append(restored)
+                        continue
+                    if latest and latest.status == 200 and same_target:
+                        try:
+                            ready = (page.evaluate("document.readyState") in ("interactive", "complete") and
+                                     page.title().strip().lower() not in ("", "allegro.pl") and
+                                     page.locator(selector).count() > 0)
+                            if ready:
+                                self._log("Challenge resolved by site JavaScript: final 200")
+                                return page.content()
+                        except PlaywrightError:
+                            # Execution context can disappear during redirects.
+                            pass
+                    elif latest and latest.status in (401, 404) and same_target:
+                        status = latest.status
+                        break
+                    if time.monotonic() >= deadline:
+                        break
+                    page.wait_for_timeout(250)
+        finally:
+            page.remove_listener("response", record_navigation)
 
         if status == 200:
             return page.content()
@@ -226,8 +414,8 @@ class AllegroClient:
 
         if status == 403:
             raise RateLimitError(
-                message="Forbidden (403) - DataDome challenge",
-                userMessage="Access denied by Allegro's anti-bot system. Please refresh your cookies using 'allegro login'.",
+                message="Forbidden (403) - challenge did not resolve within 20 seconds",
+                userMessage="Allegro did not allow this request after waiting for the page challenge.",
             )
 
         if status == 404:
@@ -240,7 +428,7 @@ class AllegroClient:
         raise AllegroCliError(
             message=f"Scrape returned {status}: {url}",
             code="ScrapeException",
-            userMessage=f"Could not fetch search page ({status}).",
+            userMessage=f"Could not fetch page ({status}).",
         )
 
     # --- Cart (edge.allegro.pl, cookie auth) ---
