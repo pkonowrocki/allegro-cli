@@ -88,6 +88,10 @@ allegro search "iphone" --pay
 | `--filter` | Key=Value custom filter (repeatable) | `--filter "color=black"` |
 | `--columns` | Custom output columns | `--columns id,name,seller.name` |
 
+### Headless page recovery
+
+Search and offer pages may initially return HTTP 403 while Allegro's page JavaScript redirects to the actual content. The client waits up to 20 seconds for a successful main-frame response and validates the requested offer ID or search query before parsing. If a challenge redirect changes the query encoding, the original URL is restored once in the same session. Imported `datadome` cookies are omitted only from the isolated headless browser, not from saved account configuration or Edge API requests. Persistent denials remain explicit errors; this does not guarantee access through every challenge.
+
 ### 📦 Manage Your Shopping
 
 **Offers:**
@@ -95,6 +99,16 @@ allegro search "iphone" --pay
 # Get full details and extracted product specifications
 allegro offer 12345678
 ```
+
+**Compare other sellers:**
+```bash
+allegro compare OFFER_ID --format json
+allegro compare OFFER_ID
+```
+
+Reads the actual "Other Offers" panel (cheapest/fastest) and opens its cheapest-sorted comparison listing. It preserves the distinction between a product and a product set/multipack. JSON includes `offerCount`, `returnedOfferCount`, `complete`, panel summaries and offer IDs, URLs, seller labels, condition and displayed prices.
+
+After applying the panel filters, the client reloads the selected comparison URL into a new document and revalidates the filters before reading cards, so old cards with identical prices/conditions cannot stand in for refreshed results. Only the first comparison page is loaded. `complete: false` means the returned offers do not cover the panel count (including any condition filters). The cheapest offer ID is resolved only when its listing price matches the panel price; the fastest summary does not infer an ID from price alone. `smartEligible` is an observed badge, not confirmation of free delivery. `displayedTotalWithDelivery` is a displayed listing total, not a verified checkout total. Missing panel or changed markup is reported as an error, not zero offers. `--compact` currently retains the same comparison JSON so completeness metadata is never dropped.
 
 **Cart:**
 ```bash
